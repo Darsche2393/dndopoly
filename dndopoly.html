@@ -898,6 +898,7 @@ function startGame(){
   G.phase = 'playing';
   G.turnPhase = 'roll';
   G.currentEvent = null;
+  G.log = [];
 
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('game-screen').style.display = 'flex';
@@ -2561,11 +2562,29 @@ function sfxCritFail(){
   osc.start(t); osc.stop(t+0.7);
 }
 function log(msg, cls=''){
+  if(!G.log) G.log=[];
+  G.log.push({msg,cls});
+  if(G.log.length>120) G.log=G.log.slice(-100); // keep last 100
   const el=document.getElementById('game-log');
   const div=document.createElement('div');
   div.className=`log-entry ${cls}`;
   div.textContent=msg;
   el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+}
+
+let _syncedLogCount=0;
+function syncLog(remoteLog){
+  if(!remoteLog||!remoteLog.length) return;
+  if(remoteLog.length<=_syncedLogCount) return;
+  const el=document.getElementById('game-log');
+  for(let i=_syncedLogCount;i<remoteLog.length;i++){
+    const div=document.createElement('div');
+    div.className=`log-entry ${remoteLog[i].cls}`;
+    div.textContent=remoteLog[i].msg;
+    el.appendChild(div);
+  }
+  _syncedLogCount=remoteLog.length;
   el.scrollTop=el.scrollHeight;
 }
 
@@ -2744,7 +2763,9 @@ function startGamePoll(){
       const remoteG=data.state.game;
       // Apply if turn, gold, or ownership changed
       const goldChanged=remoteG.players.some((p,i)=>p.gold!==G.players[i]?.gold);
-      if(remoteG.currentIdx!==G.currentIdx || goldChanged ||
+      const eventChanged=JSON.stringify(remoteG.currentEvent)!==JSON.stringify(G.currentEvent);
+      const logChanged=(remoteG.log?.length||0)>_syncedLogCount;
+      if(remoteG.currentIdx!==G.currentIdx || goldChanged || eventChanged || logChanged ||
          JSON.stringify(remoteG.tileOwners)!==JSON.stringify(G.tileOwners)){
         applyRemoteState(remoteG);
       }
@@ -2783,7 +2804,7 @@ async function hostStartGame(){
   G.deckTreasure=shuffle([...TREASURE_TROVE]);
   G.freeParking=0;G.currentIdx=0;G.doublesCount=0;
   G.doublesPending=false;G.mortgaged={};
-  G.phase='playing';G.turnPhase='roll';G.currentEvent=null;
+  G.phase='playing';G.turnPhase='roll';G.currentEvent=null;G.log=[];
 
   await sb.from('game_rooms').update({
     state:{phase:'playing',lobbyPlayers,game:G}
@@ -2821,6 +2842,7 @@ function applyRemoteState(remoteG){
   document.getElementById('turn-banner').textContent=`${cur().name}'s Turn`;
   updateRollButton();
   refreshBuildPanel();
+  syncLog(G.log);
   // Show/hide spectator event modal
   if(G.currentEvent && (myPlayerIdx===-1 || myPlayerIdx!==G.currentIdx)){
     showSpectatorModal(G.currentEvent);
