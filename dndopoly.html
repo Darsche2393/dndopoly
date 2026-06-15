@@ -2688,9 +2688,16 @@ function startLobbyPoll(){
   _pollTimer=setInterval(async()=>{
     if(!roomCode||G.phase==='playing'){stopLobbyPoll();return;}
     try{
-      const {data}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
-      if(data?.state) handleRoomUpdate(data.state);
-    }catch(e){}
+      const {data,error}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+      if(error||!data?.state)return;
+      const rs=data.state;
+      // Update lobby player list regardless
+      if(rs.lobbyPlayers) renderLobbyPlayers(rs.lobbyPlayers);
+      // Launch if host has started
+      if(rs.phase==='playing'&&rs.game&&G.phase!=='playing'){
+        launchGameFromState(rs);
+      }
+    }catch(e){ console.warn('poll error:',e); }
   },2000);
 }
 
