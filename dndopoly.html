@@ -1433,7 +1433,7 @@ function showEvent(tile, player, onDone){
   document.getElementById('purchase-bar').style.display='none';
   document.getElementById('event-modal').classList.remove('hidden');
   G.currentEvent={type:'event',title:ev.title,subtitle:evSubtitle,story:ev.story,playerName:player.name,playerColor:player.color};
-  syncStateDebounced();
+  syncState();
 
   const choicesEl = document.getElementById('event-choices');
   choicesEl.innerHTML='';
@@ -1736,7 +1736,7 @@ function applyCardEffect(card, player, deckName, onDone){
   document.getElementById('card-modal').classList.remove('hidden');
   window._cardOnDone=onDone;
   G.currentEvent={type:'card',title:card.title,subtitle:deckName,story:card.story,playerName:player.name,playerColor:player.color};
-  syncStateDebounced();
+  syncState();
 
   let resultMsg='';
   if(card.effect==='gain_gold'){
@@ -2565,6 +2565,7 @@ function log(msg, cls=''){
   if(!G.log) G.log=[];
   G.log.push({msg,cls});
   if(G.log.length>120) G.log=G.log.slice(-100); // keep last 100
+  _syncedLogCount=G.log.length; // track locally-rendered entries so syncLog won't duplicate them
   const el=document.getElementById('game-log');
   const div=document.createElement('div');
   div.className=`log-entry ${cls}`;
