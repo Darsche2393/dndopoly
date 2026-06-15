@@ -1639,6 +1639,7 @@ function doPurchase(tileId, playerIdx, price){
   updateTileDisplay(tileId,player);
   log(`${player.name} purchases ${tile.name} for ${price}g!`,'success');
   renderPlayerCards();
+  syncState();
   closeEventModal();
   if(window._eventOnDone) window._eventOnDone();
 }
@@ -2701,6 +2702,25 @@ function startLobbyPoll(){
   },2000);
 }
 
+let _gamePollTimer = null;
+function startGamePoll(){
+  if(_gamePollTimer) clearInterval(_gamePollTimer);
+  _gamePollTimer=setInterval(async()=>{
+    if(!roomCode||G.phase!=='playing'){ clearInterval(_gamePollTimer); return; }
+    // Only poll when it's NOT our turn (active player pushes state themselves)
+    if(myPlayerIdx!==-1 && myPlayerIdx===G.currentIdx) return;
+    try{
+      const {data,error}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+      if(error||!data?.state?.game) return;
+      const remoteG=data.state.game;
+      // Only apply if something meaningful changed (currentIdx or gold changed)
+      if(remoteG.currentIdx!==G.currentIdx || JSON.stringify(remoteG.tileOwners)!==JSON.stringify(G.tileOwners)){
+        applyRemoteState(remoteG);
+      }
+    }catch(e){ console.warn('game poll error:',e); }
+  },2500);
+}
+
 function launchGameFromState(rs){
   stopLobbyPoll();
   Object.assign(G,rs.game);
@@ -2712,6 +2732,7 @@ function launchGameFromState(rs){
   renderPlayerCards();
   renderTokens();
   startTurn();
+  startGamePoll();
   log('⚔ The online quest begins! May fortune favor the bold.','highlight');
 }
 
@@ -2743,13 +2764,15 @@ async function hostStartGame(){
 
 function applyRemoteState(remoteG){
   if(!remoteG)return;
-  // Skip if it's our own action (we're the current player)
-  if(myPlayerIdx!==-1 && myPlayerIdx===G.currentIdx)return;
   Object.assign(G,remoteG);
   renderPlayerCards();
   renderTokens();
   Object.entries(G.tileOwners||{}).forEach(([id,ownerIdx])=>{
     updateTileDisplay(parseInt(id),G.players[ownerIdx]);
+  });
+  Object.keys(G.mortgaged||{}).forEach(id=>{
+    const ownerIdx=G.tileOwners[id];
+    updateTileDisplay(parseInt(id), ownerIdx!=null?G.players[ownerIdx]:null);
   });
   document.getElementById('turn-banner').textContent=`${cur().name}'s Turn`;
   updateRollButton();
