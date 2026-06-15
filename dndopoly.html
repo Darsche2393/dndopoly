@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DnDopoly — Realm of Fortune</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Cinzel+Decorative:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -15,6 +16,19 @@
   --corner:110px;--side:66px;
 }
 body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min-height:100vh;overflow-x:hidden;}
+
+/* ===== LOBBY SCREEN ===== */
+#lobby-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:radial-gradient(ellipse at center,#0d1f3c 0%,#0a0a1a 70%);}
+.lobby-card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,215,0,0.3);border-radius:12px;padding:36px;width:100%;max-width:520px;}
+.lobby-card h2{font-family:'Cinzel',serif;color:var(--gold);font-size:1.3rem;margin-bottom:20px;text-align:center;letter-spacing:2px;}
+.lobby-big-btn{width:100%;padding:16px;font-size:1.05rem;margin-bottom:12px;display:block;}
+.lobby-input{width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:6px;padding:10px 14px;color:var(--text);font-family:'Crimson Text',serif;font-size:1rem;outline:none;margin-bottom:10px;}
+.lobby-input:focus{border-color:var(--gold);}
+.lobby-join-row{display:flex;gap:8px;align-items:center;}
+.lobby-join-row .lobby-input{margin-bottom:0;width:130px;text-transform:uppercase;letter-spacing:3px;}
+.lobby-player-entry{display:flex;align-items:center;gap:10px;padding:9px 14px;background:rgba(255,255,255,0.05);border-radius:8px;margin-bottom:8px;border:1px solid rgba(255,215,0,0.12);}
+.lobby-player-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+.room-code-big{font-family:'Cinzel',serif;font-size:2rem;color:var(--gold);letter-spacing:8px;text-align:center;margin:8px 0 4px;}
 
 /* ===== SETUP SCREEN ===== */
 #setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:radial-gradient(ellipse at center,#0d1f3c 0%,#0a0a1a 70%);}
@@ -284,8 +298,45 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
 </head>
 <body>
 
+<!-- ===== LOBBY SCREEN ===== -->
+<div id="lobby-screen">
+  <div class="logo">DnDopoly</div>
+  <div class="logo-sub">⚔ REALM OF FORTUNE ⚔</div>
+  <div class="lobby-card">
+    <!-- Mode select -->
+    <div id="lobby-mode-select">
+      <h2>HOW DO YOU RIDE?</h2>
+      <button class="btn btn-gold lobby-big-btn" onclick="showOnlineOptions()">⚔ Play Online with Friends</button>
+      <button class="btn btn-outline lobby-big-btn" onclick="playLocal()">🎲 Play Locally (Same Device)</button>
+    </div>
+    <!-- Online options -->
+    <div id="lobby-online-options" style="display:none">
+      <div id="lobby-create-section">
+        <h2>JOIN OR CREATE</h2>
+        <input id="lobby-name" class="lobby-input" placeholder="Your adventurer name..." maxlength="20">
+        <button class="btn btn-gold" style="width:100%;padding:13px;font-size:1rem;margin-bottom:14px" onclick="createRoom()">🏰 Create New Room</button>
+        <div class="lobby-join-row">
+          <input id="join-code-input" class="lobby-input" placeholder="CODE" maxlength="4">
+          <button class="btn btn-outline" style="flex:1;padding:10px" onclick="joinRoom()">⚔ Join Room</button>
+        </div>
+        <p style="color:var(--dim);font-size:0.85rem;text-align:center;margin-top:6px">Enter a 4-letter code to join a friend's room</p>
+      </div>
+      <div id="lobby-waiting" style="display:none">
+        <h2 style="text-align:center;margin-bottom:4px">ROOM CODE</h2>
+        <div class="room-code-big" id="room-code-display"></div>
+        <p style="text-align:center;color:var(--dim);font-size:0.9rem;margin-bottom:18px">Share this with your friends!</p>
+        <div id="lobby-player-list"></div>
+        <div style="text-align:center;margin-top:16px">
+          <button class="btn btn-gold" id="start-game-btn" onclick="hostStartGame()" style="display:none;font-size:1.05rem;padding:14px 32px">⚔ BEGIN THE QUEST</button>
+          <p id="waiting-msg" style="color:var(--dim);font-size:0.9rem">Waiting for host to start...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== SETUP SCREEN ===== -->
-<div id="setup-screen">
+<div id="setup-screen" style="display:none">
   <div class="logo">DnDopoly</div>
   <div class="logo-sub">⚔ REALM OF FORTUNE ⚔</div>
   <div class="setup-card">
@@ -1161,12 +1212,12 @@ function startTurn(){
     deductGold(p, p.curseAmount, 'curse damage');
   }
   document.getElementById('turn-banner').textContent = `${p.name}'s Turn`;
-  document.getElementById('roll-btn').disabled = false;
   document.getElementById('roll-btn').style.display = '';
   const jailBtn = document.getElementById('jail-pay-btn');
   jailBtn.style.display = p.inJail ? '' : 'none';
   G.turnPhase = 'roll';
   refreshBuildPanel();
+  updateRollButton();
 }
 
 function cur(){ return G.players[G.currentIdx]; }
@@ -2338,23 +2389,24 @@ function endTurn(){
     log(`🎲 ${p.name} rolled doubles — bonus roll!`,'success');
     renderPlayerCards();
     renderTokens();
-    document.getElementById('roll-btn').disabled=false;
     document.getElementById('turn-banner').textContent=`${p.name} — Roll Again (doubles)!`;
     refreshBuildPanel();
+    updateRollButton();
+    syncState();
     return; // same player rolls again
   }
   G.doublesPending=false;
   G.doublesCount=0;
   renderPlayerCards();
   renderTokens();
-  document.getElementById('roll-btn').disabled=false;
   // Next active player
   let next=(G.currentIdx+1)%G.players.length;
   let tries=0;
   while(G.players[next].bankrupt && tries<G.players.length){ next=(next+1)%G.players.length; tries++; }
   G.currentIdx=next;
   renderPlayerCards();
-  startTurn(); // startTurn already calls refreshBuildPanel
+  syncState();
+  startTurn(); // startTurn already calls refreshBuildPanel + updateRollButton
 }
 
 function deductGold(player, amount, reason){
@@ -2500,8 +2552,206 @@ function log(msg, cls=''){
 window.onload=()=>{
   setPlayerCount(3);
   renderSetupRows();
+  // Lobby screen is shown by default (setup-screen starts hidden)
 };
 window.addEventListener('resize',()=>{ if(G.phase==='playing') renderTokens(); });
+
+// ═══════════════════════════════════════════════════════════
+// MULTIPLAYER — Supabase Realtime
+// ═══════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://nbutxuxxdczpbnykkybk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nFHuCxd-2kxokR7uS39fRw_AYA5x-ZP';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let mySessionId = crypto.randomUUID();
+let myPlayerIdx = -1;   // -1 = local/unrestricted
+let roomCode = null;
+let isHost = false;
+let _realtimeChannel = null;
+
+function genRoomCode(){
+  return Math.random().toString(36).substring(2,6).toUpperCase();
+}
+
+function showOnlineOptions(){
+  document.getElementById('lobby-mode-select').style.display='none';
+  document.getElementById('lobby-online-options').style.display='';
+}
+
+function playLocal(){
+  document.getElementById('lobby-screen').style.display='none';
+  document.getElementById('setup-screen').style.display='flex';
+}
+
+async function createRoom(){
+  const name=(document.getElementById('lobby-name').value.trim())||'Adventurer';
+  roomCode=genRoomCode();
+  isHost=true;
+  myPlayerIdx=0;
+
+  const initState={
+    phase:'lobby',
+    lobbyPlayers:[{name,sessionId:mySessionId,idx:0}],
+    game:null
+  };
+
+  const {error}=await sb.from('game_rooms').insert({id:roomCode,state:initState});
+  if(error){alert('Could not create room: '+error.message);return;}
+
+  showLobbyWaiting(roomCode,true);
+  subscribeToRoom();
+}
+
+async function joinRoom(){
+  const code=(document.getElementById('join-code-input').value.trim()).toUpperCase();
+  const name=(document.getElementById('lobby-name').value.trim())||'Adventurer';
+  if(!code||code.length<4){alert('Enter the 4-letter room code!');return;}
+
+  const {data,error}=await sb.from('game_rooms').select('state').eq('id',code).single();
+  if(error||!data){alert('Room not found! Double-check the code.');return;}
+
+  const rs=data.state;
+  if(rs.phase!=='lobby'){alert('That game has already started!');return;}
+  if(rs.lobbyPlayers.length>=6){alert('Room is full (max 6 players)!');return;}
+
+  myPlayerIdx=rs.lobbyPlayers.length;
+  roomCode=code;
+  isHost=false;
+
+  const updatedPlayers=[...rs.lobbyPlayers,{name,sessionId:mySessionId,idx:myPlayerIdx}];
+  await sb.from('game_rooms').update({state:{...rs,lobbyPlayers:updatedPlayers}}).eq('id',code);
+
+  showLobbyWaiting(code,false);
+  subscribeToRoom();
+}
+
+function showLobbyWaiting(code,amHost){
+  document.getElementById('lobby-create-section').style.display='none';
+  document.getElementById('lobby-waiting').style.display='';
+  document.getElementById('room-code-display').textContent=code;
+  if(amHost){
+    document.getElementById('start-game-btn').style.display='';
+    document.getElementById('waiting-msg').style.display='none';
+  }
+}
+
+function renderLobbyPlayers(players){
+  const el=document.getElementById('lobby-player-list');
+  if(!el)return;
+  el.innerHTML=players.map((p,i)=>`
+    <div class="lobby-player-entry">
+      <div class="lobby-player-dot" style="background:${PLAYER_COLORS[i]}"></div>
+      <span style="font-family:'Cinzel',serif;font-size:0.9rem">${p.name}</span>
+      ${i===0?'<span style="color:var(--gold);font-size:0.75rem;margin-left:auto;font-family:Cinzel,serif">HOST</span>':''}
+    </div>`).join('');
+}
+
+function subscribeToRoom(){
+  _realtimeChannel=sb.channel(`room-${roomCode}`)
+    .on('postgres_changes',{
+      event:'UPDATE',
+      schema:'public',
+      table:'game_rooms',
+      filter:`id=eq.${roomCode}`
+    },(payload)=>{
+      handleRoomUpdate(payload.new.state);
+    })
+    .subscribe();
+}
+
+function handleRoomUpdate(rs){
+  if(!rs)return;
+  if(rs.phase==='lobby'){
+    renderLobbyPlayers(rs.lobbyPlayers);
+    return;
+  }
+  if(rs.phase==='playing'&&rs.game){
+    const inLobby=document.getElementById('lobby-screen').style.display!=='none'
+                ||document.getElementById('lobby-screen').style.display==='';
+    if(inLobby&&G.phase!=='playing'){
+      launchGameFromState(rs);
+    } else if(G.phase==='playing'){
+      applyRemoteState(rs.game);
+    }
+  }
+}
+
+function launchGameFromState(rs){
+  Object.assign(G,rs.game);
+  document.getElementById('lobby-screen').style.display='none';
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('game-screen').style.display='flex';
+  buildBoard();
+  buildCenterArt();
+  renderPlayerCards();
+  renderTokens();
+  startTurn();
+  log('⚔ The online quest begins! May fortune favor the bold.','highlight');
+}
+
+async function hostStartGame(){
+  const {data}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+  const lobbyPlayers=data.state.lobbyPlayers;
+
+  G.players=lobbyPlayers.map((p,i)=>({
+    idx:i, name:p.name, sessionId:p.sessionId,
+    color:PLAYER_COLORS[i], gold:2000, pos:0,
+    gear:null, potions:[], inJail:false, jailTurns:0,
+    skipTurns:0, curse:0, curseAmount:0, bankrupt:false,
+  }));
+  G.tileOwners={};G.buildings={};G.tilePrices={};
+  TILES.forEach(t=>{if(t.price)G.tilePrices[t.id]=t.price;});
+  G.deckFates=shuffle([...FATES_WHISPER]);
+  G.deckTreasure=shuffle([...TREASURE_TROVE]);
+  G.freeParking=0;G.currentIdx=0;G.doublesCount=0;
+  G.doublesPending=false;G.mortgaged={};
+  G.phase='playing';G.turnPhase='roll';
+
+  await sb.from('game_rooms').update({
+    state:{phase:'playing',lobbyPlayers,game:G}
+  }).eq('id',roomCode);
+
+  // Host transitions immediately
+  launchGameFromState({game:G});
+}
+
+function applyRemoteState(remoteG){
+  if(!remoteG)return;
+  // Skip if it's our own action (we're the current player)
+  if(myPlayerIdx!==-1 && myPlayerIdx===G.currentIdx)return;
+  Object.assign(G,remoteG);
+  renderPlayerCards();
+  renderTokens();
+  Object.entries(G.tileOwners||{}).forEach(([id,ownerIdx])=>{
+    updateTileDisplay(parseInt(id),G.players[ownerIdx]);
+  });
+  document.getElementById('turn-banner').textContent=`${cur().name}'s Turn`;
+  updateRollButton();
+  refreshBuildPanel();
+}
+
+async function syncState(){
+  if(!roomCode)return;
+  try{
+    const {data}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+    if(!data)return;
+    await sb.from('game_rooms').update({state:{...data.state,game:G}}).eq('id',roomCode);
+  }catch(e){console.warn('syncState error:',e);}
+}
+
+function updateRollButton(){
+  const btn=document.getElementById('roll-btn');
+  if(!btn)return;
+  if(myPlayerIdx===-1){
+    // Local play — no restriction, controlled by turnPhase
+    btn.disabled=(G.turnPhase!=='roll');
+    if(G.turnPhase==='roll')btn.textContent='🎲 Roll the Dice';
+    return;
+  }
+  const isMyTurn=(myPlayerIdx===G.currentIdx);
+  btn.disabled=!isMyTurn||(G.turnPhase!=='roll');
+  btn.textContent=isMyTurn?'🎲 Roll the Dice':`⏳ ${cur()?.name||'...'}'s turn`;
+}
 </script>
 </body>
 </html>
