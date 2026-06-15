@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DnDopoly — Realm of Fortune</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Cinzel+Decorative:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0a1a;--board-bg:#0e1f0e;--parchment:#f4e4b0;--gold:#ffd700;
+  --text:#e8d5a3;--dim:#9a8a6a;--shadow:rgba(0,0,0,0.85);
+  --purple:#8e44ad;--light-blue:#2980b9;--pink:#c0392b;--orange:#d35400;
+  --red:#922b21;--yellow:#b7950b;--green:#1e8449;--dark-blue:#1a3a6b;
+  --corner:110px;--side:66px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min-height:100vh;overflow-x:hidden;}
+
+/* ===== SETUP SCREEN ===== */
+#setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:radial-gradient(ellipse at center,#0d1f3c 0%,#0a0a1a 70%);}
+.logo{font-family:'Cinzel Decorative',cursive;font-size:3.5rem;color:var(--gold);text-shadow:0 0 30px rgba(255,215,0,0.5);margin-bottom:8px;text-align:center;}
+.logo-sub{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--dim);letter-spacing:4px;margin-bottom:50px;text-align:center;}
+.setup-card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,215,0,0.3);border-radius:12px;padding:36px;width:100%;max-width:560px;}
+.setup-card h2{font-family:'Cinzel',serif;color:var(--gold);font-size:1.4rem;margin-bottom:24px;text-align:center;letter-spacing:2px;}
+.player-row{display:flex;gap:12px;align-items:center;margin-bottom:14px;padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;border:1px solid rgba(255,255,255,0.1);}
+.player-row label{font-family:'Cinzel',serif;font-size:0.85rem;color:var(--dim);width:70px;flex-shrink:0;}
+.player-row input[type=text]{flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:6px;padding:8px 12px;color:var(--text);font-family:'Crimson Text',serif;font-size:1rem;outline:none;}
+.player-row input[type=text]:focus{border-color:var(--gold);}
+.color-pick{display:flex;gap:6px;}
+.color-dot{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all 0.2s;}
+.color-dot.selected{border-color:#fff;transform:scale(1.2);}
+.player-row.inactive{opacity:0.35;}
+.setup-controls{display:flex;gap:12px;margin:20px 0 0;}
+.btn{padding:10px 24px;border:none;border-radius:8px;cursor:pointer;font-family:'Cinzel',serif;font-size:0.95rem;letter-spacing:1px;transition:all 0.2s;}
+.btn-gold{background:linear-gradient(135deg,#b8860b,#ffd700,#b8860b);color:#1a0a00;font-weight:700;}
+.btn-gold:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(255,215,0,0.4);}
+.btn-outline{background:transparent;border:1px solid rgba(255,215,0,0.4);color:var(--gold);}
+.btn-outline:hover{background:rgba(255,215,0,0.1);}
+.btn-danger{background:rgba(180,40,40,0.7);border:1px solid rgba(255,80,80,0.4);color:#ffaaaa;}
+.btn-sm{padding:6px 14px;font-size:0.8rem;}
+.player-count-row{display:flex;gap:8px;margin-bottom:20px;justify-content:center;}
+.count-btn{padding:8px 18px;border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.05);color:var(--dim);border-radius:20px;cursor:pointer;font-family:'Cinzel',serif;font-size:0.85rem;transition:all 0.2s;}
+.count-btn.active{background:rgba(255,215,0,0.2);border-color:var(--gold);color:var(--gold);}
+
+/* ===== GAME SCREEN ===== */
+#game-screen{display:none;flex-direction:column;align-items:center;padding:16px;min-height:100vh;}
+.game-layout{display:flex;gap:16px;align-items:flex-start;width:100%;max-width:1300px;}
+
+/* ===== BOARD ===== */
+.board-wrap{position:relative;flex-shrink:0;}
+.board{
+  display:grid;
+  grid-template-columns:var(--corner) repeat(9,var(--side)) var(--corner);
+  grid-template-rows:var(--corner) repeat(9,var(--side)) var(--corner);
+  border:3px solid #5a4a2a;
+  background:#1a3a1a;
+  box-shadow:0 0 40px rgba(0,0,0,0.8),inset 0 0 60px rgba(0,0,0,0.4);
+}
+.board-center{grid-column:2/11;grid-row:2/11;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#0a1a10 0%,#060e0a 100%);position:relative;overflow:hidden;}
+.center-art{width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
+
+/* ===== TILE BASE ===== */
+.tile{position:relative;border:1px solid #2a3a2a;background:#0c1a0c;cursor:pointer;overflow:hidden;
+  transition:filter 0.15s,box-shadow 0.15s;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0;}
+.tile:hover{filter:brightness(1.25);z-index:5;}
+
+/* ===== CORNER TILES ===== */
+.tile.corner{align-items:center;justify-content:center;background:#0a1a0a;border:1px solid #4a6a2a;}
+.corner-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;padding:6px;gap:3px;}
+.corner-icon{font-size:1.8rem;line-height:1;}
+.corner-title{font-family:'Cinzel',serif;font-size:0.52rem;text-align:center;color:var(--gold);letter-spacing:0.5px;line-height:1.3;text-transform:uppercase;}
+.corner-sub{font-size:0.44rem;text-align:center;color:var(--dim);line-height:1.2;}
+
+/* ===== PROPERTY TILES ===== */
+.prop-tile{background:#16110a;justify-content:flex-start;}
+.prop-tile .tile-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 2px 1px;gap:1px;overflow:hidden;width:100%;}
+.tile-name{font-size:0.4rem;text-align:center;color:#d8c88a;line-height:1.2;word-break:break-word;font-family:'Cinzel',serif;letter-spacing:0.2px;}
+.tile-price{font-size:0.42rem;color:var(--gold);text-align:center;}
+
+/* Color bands — thicker, face board center */
+.color-band{flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.tile.bottom .color-band{width:100%;height:24px;order:-1;}
+.tile.top    .color-band{width:100%;height:24px;order:2;}
+.tile.left   .color-band{height:100%;width:24px;position:absolute;right:0;top:0;flex-direction:column;}
+.tile.right  .color-band{height:100%;width:24px;position:absolute;left:0;top:0;flex-direction:column;}
+.band-icon{font-size:0.85rem;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.7));}
+
+/* Building pip row */
+.build-pips{display:flex;gap:2px;position:absolute;bottom:2px;left:50%;transform:translateX(-50%);z-index:2;}
+.build-pip{width:5px;height:5px;border-radius:1px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.2);}
+.build-pip.filled{background:#ffd700;border-color:#b8860b;box-shadow:0 0 4px rgba(255,215,0,0.6);}
+.build-pip.hotel{background:#e74c3c;border-color:#c0392b;border-radius:50%;box-shadow:0 0 4px rgba(231,76,60,0.7);}
+
+/* Owner glow — applied via JS */
+.tile.owned-p0{box-shadow:inset 0 0 0 3px #e74c3c,0 0 12px rgba(231,76,60,0.6);}
+.tile.owned-p1{box-shadow:inset 0 0 0 3px #3498db,0 0 12px rgba(52,152,219,0.6);}
+.tile.owned-p2{box-shadow:inset 0 0 0 3px #2ecc71,0 0 12px rgba(46,204,113,0.6);}
+.tile.owned-p3{box-shadow:inset 0 0 0 3px #f39c12,0 0 12px rgba(243,156,18,0.6);}
+.tile.owned-p4{box-shadow:inset 0 0 0 3px #9b59b6,0 0 12px rgba(155,89,182,0.6);}
+.tile.owned-p5{box-shadow:inset 0 0 0 3px #1abc9c,0 0 12px rgba(26,188,156,0.6);}
+
+/* Owner flag inside tile */
+.owner-flag{
+  position:absolute;top:3px;right:3px;
+  width:14px;height:14px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,0.7);
+  font-size:7px;display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-weight:700;color:#fff;
+  z-index:5;box-shadow:0 1px 4px rgba(0,0,0,0.8);
+  pointer-events:none;
+}
+
+/* Rent toast */
+.rent-toast{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:linear-gradient(135deg,#1a0808,#2a1010);
+  border:2px solid #e74c3c;border-radius:12px;
+  padding:18px 28px;text-align:center;z-index:9999;
+  font-family:'Cinzel',serif;color:#ffaaaa;
+  box-shadow:0 0 40px rgba(231,76,60,0.5);
+  animation:toastIn 0.3s ease;pointer-events:none;
+}
+.rent-toast .rent-amt{font-size:2rem;color:#ff6666;font-weight:700;}
+.rent-toast .rent-from{font-size:0.8rem;color:var(--dim);margin-top:4px;}
+@keyframes toastIn{from{transform:translate(-50%,-50%) scale(0.7);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
+
+/* Build panel */
+#build-panel{background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:14px;display:none;}
+#build-panel .build-panel-title{font-family:'Cinzel',serif;font-size:0.85rem;color:var(--gold);margin-bottom:10px;letter-spacing:1px;}
+.build-prop-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:6px 8px;background:rgba(0,0,0,0.3);border-radius:6px;}
+.build-prop-row .bpr-name{flex:1;font-size:0.78rem;color:var(--text);}
+.build-prop-row .bpr-pips{display:flex;gap:2px;}
+.build-prop-row .bpr-pip{width:7px;height:7px;border-radius:50%;background:#333;border:1px solid #555;}
+.build-prop-row .bpr-pip.on{background:var(--gold);border-color:#ffd700;}
+.build-prop-row .bpr-btn{font-size:0.7rem;padding:3px 8px;}
+
+/* Sidebar toggle */
+#sidebar-toggle{
+  position:absolute;right:-14px;top:50%;transform:translateY(-50%);
+  width:14px;height:48px;background:rgba(255,215,0,0.15);
+  border:1px solid rgba(255,215,0,0.3);border-radius:0 6px 6px 0;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:0.6rem;color:var(--gold);z-index:30;transition:background 0.2s;
+}
+#sidebar-toggle:hover{background:rgba(255,215,0,0.3);}
+.sidebar.collapsed{display:none;}
+
+/* Mortgage badge */
+.mortgaged-badge{
+  position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(0,0,0,0.6) 0,rgba(0,0,0,0.6) 4px,rgba(80,30,30,0.4) 4px,rgba(80,30,30,0.4) 8px);
+  display:flex;align-items:center;justify-content:center;z-index:4;pointer-events:none;
+}
+.mortgaged-badge span{font-size:0.55rem;color:#ff8888;font-family:'Cinzel',serif;font-weight:700;letter-spacing:1px;writing-mode:vertical-rl;text-orientation:upright;background:rgba(0,0,0,0.7);padding:2px;border-radius:2px;}
+
+/* ===== SPECIAL TILE TYPES ===== */
+.tile.chance-tile   {background:#130a1f;}
+.tile.community-tile{background:#1a1500;}
+.tile.railroad-tile {background:#0a0a0d;}
+.tile.utility-tile  {background:#081420;}
+.tile.tax-tile      {background:#1f0a08;}
+.special-icon{font-size:1.1rem;text-align:center;display:block;margin-bottom:1px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));}
+.special-label{font-size:0.38rem;text-align:center;color:var(--dim);font-family:'Cinzel',serif;letter-spacing:0.3px;line-height:1.2;}
+
+/* ===== TILE-INFO MODAL ===== */
+#tile-info-modal .modal-box{background:linear-gradient(150deg,#0f1a10,#1a100f);max-width:480px;padding:24px;}
+.tinfo-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.tinfo-color-swatch{width:14px;height:52px;border-radius:4px;flex-shrink:0;}
+.tinfo-title{font-family:'Cinzel Decorative',cursive;font-size:1.3rem;color:var(--gold);line-height:1.2;}
+.tinfo-group{font-family:'Cinzel',serif;font-size:0.7rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
+.tinfo-owner-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-family:'Cinzel',serif;font-size:0.72rem;margin-top:6px;}
+.tinfo-section{margin-bottom:14px;}
+.tinfo-section-title{font-family:'Cinzel',serif;font-size:0.7rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,215,0,0.15);}
+.rent-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+.rent-table td{padding:4px 8px;border-bottom:1px solid rgba(255,255,255,0.05);}
+.rent-table td:first-child{color:var(--dim);}
+.rent-table td:last-child{color:var(--gold);text-align:right;font-family:'Cinzel',serif;}
+.rent-table tr.current-rent td{color:#88ff88;font-weight:bold;}
+.rent-table tr.current-rent td:first-child{color:#88ff88;}
+.tinfo-building-row{display:flex;gap:6px;margin-top:8px;}
+.tinfo-pip{width:28px;height:28px;border-radius:4px;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.05);display:flex;align-items:center;justify-content:center;font-size:0.9rem;}
+.tinfo-pip.filled{background:rgba(255,215,0,0.2);border-color:rgba(255,215,0,0.6);}
+.tinfo-stat-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.85rem;}
+.tinfo-stat-row span:first-child{color:var(--dim);}
+.tinfo-stat-row span:last-child{color:var(--text);font-family:'Cinzel',serif;}
+
+/* Token */
+.token{
+  position:absolute;width:26px;height:26px;border-radius:50%;
+  border:2.5px solid rgba(255,255,255,0.85);z-index:25;
+  transition:all 0.45s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow:0 3px 12px rgba(0,0,0,0.9),0 0 10px currentColor;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:0.65rem;font-weight:700;
+  color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.9);
+  cursor:default;
+}
+.token.active-token{
+  box-shadow:0 3px 12px rgba(0,0,0,0.9),0 0 18px currentColor,0 0 0 3px rgba(255,215,0,0.7);
+  transform:translateY(-3px) scale(1.15);
+  z-index:26;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar{flex:1;min-width:260px;max-width:320px;display:flex;flex-direction:column;gap:12px;}
+.player-card{border-radius:10px;padding:14px;border:2px solid transparent;transition:all 0.3s;cursor:pointer;}
+.player-card:hover{transform:translateY(-2px);filter:brightness(1.15);}
+.player-card.active-turn{border-color:var(--gold);box-shadow:0 0 20px rgba(255,215,0,0.3);}
+.player-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.player-token-icon{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,0.5);flex-shrink:0;}
+.player-name-label{font-family:'Cinzel',serif;font-size:0.95rem;font-weight:600;}
+.player-gold{font-size:1.3rem;color:var(--gold);font-family:'Cinzel',serif;margin-bottom:6px;}
+.player-gold span{font-size:0.7rem;color:var(--dim);margin-left:4px;}
+.player-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.tag{font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.1);color:var(--dim);font-family:'Cinzel',serif;}
+.tag.gear-tag{background:rgba(100,60,200,0.3);color:#c8a8ff;}
+.tag.potion-tag{background:rgba(60,160,60,0.3);color:#a8ffa8;}
+.tag.jail-tag{background:rgba(180,40,40,0.3);color:#ffaaaa;}
+.in-jail-badge{font-size:0.65rem;color:#ff8888;font-family:'Cinzel',serif;}
+.prop-list{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.prop-dot{width:10px;height:10px;border-radius:2px;}
+
+/* ===== DICE & CONTROLS ===== */
+.controls-panel{background:rgba(255,255,255,0.04);border:1px solid rgba(255,215,0,0.2);border-radius:10px;padding:16px;}
+.turn-banner{font-family:'Cinzel',serif;font-size:0.9rem;color:var(--gold);text-align:center;margin-bottom:12px;min-height:20px;}
+.dice-row{display:flex;gap:10px;justify-content:center;margin-bottom:12px;}
+.die{width:48px;height:48px;border-radius:8px;background:#1a1a1a;border:2px solid #5a4a2a;display:flex;align-items:center;justify-content:center;font-size:1.8rem;transition:transform 0.1s;}
+.die.rolling{animation:spin 0.4s ease-out;}
+@keyframes spin{0%{transform:rotate(0)scale(1)}50%{transform:rotate(180deg)scale(1.2)}100%{transform:rotate(360deg)scale(1)}}
+.control-btns{display:flex;gap:8px;flex-direction:column;}
+
+/* ===== GAME LOG ===== */
+.log-panel{background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;height:140px;overflow-y:auto;font-size:0.8rem;line-height:1.6;}
+.log-entry{border-bottom:1px solid rgba(255,255,255,0.05);padding:2px 0;color:var(--dim);}
+.log-entry.highlight{color:var(--gold);}
+.log-entry.danger{color:#ff8888;}
+.log-entry.success{color:#88ff88;}
+
+/* ===== MODAL ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.hidden{display:none;}
+.modal-box{background:linear-gradient(160deg,#0d1a0d,#1a0d1a);border:2px solid rgba(255,215,0,0.5);border-radius:16px;padding:32px;max-width:580px;width:100%;box-shadow:0 0 60px rgba(0,0,0,0.9),0 0 30px rgba(255,215,0,0.15);max-height:90vh;overflow-y:auto;}
+.modal-box.card-style{background:linear-gradient(160deg,#1a1200,#0d0d00);border-color:rgba(255,215,0,0.6);}
+.modal-title{font-family:'Cinzel Decorative',cursive;font-size:1.5rem;color:var(--gold);margin-bottom:6px;text-align:center;}
+.modal-subtitle{font-family:'Cinzel',serif;font-size:0.8rem;color:var(--dim);text-align:center;letter-spacing:3px;margin-bottom:20px;text-transform:uppercase;}
+.modal-story{font-size:1.05rem;line-height:1.8;color:#d8c890;margin-bottom:24px;font-style:italic;}
+.modal-choices{display:flex;flex-direction:column;gap:10px;}
+.choice-btn{padding:12px 18px;border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.05);border-radius:8px;cursor:pointer;color:var(--text);font-family:'Crimson Text',serif;font-size:1rem;text-align:left;transition:all 0.2s;line-height:1.4;}
+.choice-btn:hover{background:rgba(255,215,0,0.15);border-color:var(--gold);transform:translateX(4px);}
+.choice-btn .choice-cost{display:block;font-size:0.75rem;color:var(--dim);margin-top:3px;}
+.choice-btn .choice-risk{display:block;font-size:0.7rem;color:#ff9944;margin-top:2px;}
+.modal-result{padding:16px;border-radius:8px;margin-bottom:16px;text-align:center;font-size:1.1rem;line-height:1.6;}
+.modal-result.success{background:rgba(40,160,40,0.2);border:1px solid rgba(40,160,40,0.4);color:#aaffaa;}
+.modal-result.failure{background:rgba(160,40,40,0.2);border:1px solid rgba(160,40,40,0.4);color:#ffaaaa;}
+.modal-result.neutral{background:rgba(100,100,40,0.2);border:1px solid rgba(255,215,0,0.3);color:#ffd780;}
+.dice-display{font-size:3rem;text-align:center;margin:10px 0;}
+.dice-display.rolling-anim{animation:diceRoll 0.5s ease-out;}
+@keyframes diceRoll{0%{transform:rotate(-20deg) scale(0.8)}50%{transform:rotate(15deg) scale(1.3)}100%{transform:rotate(0) scale(1)}}
+
+/* Shop modal */
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.shop-item{padding:12px;border:1px solid rgba(255,215,0,0.2);border-radius:8px;background:rgba(255,255,255,0.03);cursor:pointer;transition:all 0.2s;}
+.shop-item:hover{border-color:var(--gold);background:rgba(255,215,0,0.08);}
+.shop-item-name{font-family:'Cinzel',serif;font-size:0.85rem;color:var(--gold);margin-bottom:4px;}
+.shop-item-price{font-size:0.75rem;color:var(--dim);}
+.shop-item-effect{font-size:0.72rem;color:#c0a870;margin-top:4px;line-height:1.3;}
+.shop-item.cant-afford{opacity:0.4;cursor:not-allowed;}
+.shop-item.already-owned{border-color:rgba(100,200,100,0.4);background:rgba(100,200,100,0.05);}
+
+/* Win screen */
+#win-screen{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:200;align-items:center;justify-content:center;flex-direction:column;}
+.win-title{font-family:'Cinzel Decorative',cursive;font-size:4rem;color:var(--gold);text-shadow:0 0 40px rgba(255,215,0,0.8);margin-bottom:20px;text-align:center;}
+.win-sub{font-family:'Cinzel',serif;font-size:1.5rem;color:var(--text);margin-bottom:40px;}
+
+/* Property purchase bar */
+.purchase-bar{display:flex;gap:10px;justify-content:center;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,215,0,0.2);}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:rgba(0,0,0,0.3);}
+::-webkit-scrollbar-thumb{background:rgba(255,215,0,0.3);border-radius:3px;}
+
+.section-label{font-family:'Cinzel',serif;font-size:0.65rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+</style>
+</head>
+<body>
+
+<!-- ===== SETUP SCREEN ===== -->
+<div id="setup-screen">
+  <div class="logo">DnDopoly</div>
+  <div class="logo-sub">⚔ REALM OF FORTUNE ⚔</div>
+  <div class="setup-card">
+    <h2>ASSEMBLE YOUR PARTY</h2>
+    <div class="section-label" style="text-align:center;margin-bottom:14px;">Number of Adventurers</div>
+    <div class="player-count-row">
+      <button class="count-btn" onclick="setPlayerCount(2)">2</button>
+      <button class="count-btn active" onclick="setPlayerCount(3)">3</button>
+      <button class="count-btn" onclick="setPlayerCount(4)">4</button>
+    </div>
+    <div id="player-setup-rows"></div>
+    <div class="setup-controls">
+      <button class="btn btn-gold" style="flex:1;font-size:1.1rem;padding:14px;" onclick="startGame()">⚔ BEGIN THE QUEST</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GAME SCREEN ===== -->
+<div id="game-screen">
+  <div class="game-layout">
+    <!-- Board -->
+    <div class="board-wrap" style="position:relative;">
+      <div class="board" id="game-board">
+        <!-- Tiles injected by JS -->
+        <div class="board-center" id="board-center">
+          <div class="center-art" id="center-art"></div>
+        </div>
+      </div>
+      <div id="token-layer" style="position:absolute;inset:0;pointer-events:none;z-index:20;"></div>
+      <!-- Sidebar toggle tab -->
+      <div id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">❯</div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="main-sidebar">
+      <div class="section-label">Adventurers</div>
+      <div id="player-cards"></div>
+      <div id="build-panel"></div>
+      <div class="controls-panel">
+        <div class="turn-banner" id="turn-banner">Loading...</div>
+        <div class="dice-row">
+          <div class="die" id="die1">⚀</div>
+          <div class="die" id="die2">⚀</div>
+        </div>
+        <div class="control-btns">
+          <button class="btn btn-gold" id="roll-btn" onclick="rollDice()">🎲 Roll the Dice</button>
+          <button class="btn btn-outline btn-sm" id="jail-pay-btn" style="display:none" onclick="payJailFine()">⛓ Pay 50g to Escape Jail</button>
+        </div>
+      </div>
+      <div class="section-label">Chronicle</div>
+      <div class="log-panel" id="game-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EVENT MODAL ===== -->
+<div class="modal-overlay hidden" id="event-modal">
+  <div class="modal-box" id="event-modal-box">
+    <div class="modal-title" id="event-title"></div>
+    <div class="modal-subtitle" id="event-subtitle"></div>
+    <div class="modal-story" id="event-story"></div>
+    <div id="event-result-area"></div>
+    <div class="modal-choices" id="event-choices"></div>
+    <div class="purchase-bar" id="purchase-bar" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ===== CARD MODAL ===== -->
+<div class="modal-overlay hidden" id="card-modal">
+  <div class="modal-box card-style">
+    <div class="modal-title" id="card-title"></div>
+    <div class="modal-subtitle" id="card-type-label"></div>
+    <div class="modal-story" id="card-story"></div>
+    <div id="card-result" class="modal-result neutral" style="display:none"></div>
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn btn-gold" onclick="closeCardModal()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TILE INFO MODAL ===== -->
+<div class="modal-overlay hidden" id="tile-info-modal" onclick="if(event.target===this)closeTileInfo()">
+  <div class="modal-box" style="background:linear-gradient(150deg,#0f1a10,#1a100f);max-width:460px;padding:24px;">
+    <div class="tinfo-header">
+      <div class="tinfo-color-swatch" id="tinfo-swatch"></div>
+      <div>
+        <div class="tinfo-title" id="tinfo-title"></div>
+        <div class="tinfo-group" id="tinfo-group"></div>
+        <div id="tinfo-owner-wrap"></div>
+      </div>
+    </div>
+    <div id="tinfo-body"></div>
+    <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center;" id="tinfo-actions"></div>
+  </div>
+</div>
+
+<!-- ===== PLAYER INFO MODAL ===== -->
+<div class="modal-overlay hidden" id="player-info-modal" onclick="if(event.target===this)closePlayerInfo()">
+  <div class="modal-box" style="background:linear-gradient(150deg,#0a0a1a,#101828);max-width:500px;padding:24px;">
+    <div id="pinfo-header" style="display:flex;align-items:center;gap:14px;margin-bottom:18px;border-bottom:1px solid rgba(255,215,0,0.15);padding-bottom:14px;"></div>
+    <div id="pinfo-body"></div>
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn btn-outline btn-sm" onclick="closePlayerInfo()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== WIN SCREEN ===== -->
+<div id="win-screen">
+  <div class="win-title" id="win-title">VICTORY!</div>
+  <div class="win-sub" id="win-sub"></div>
+  <button class="btn btn-gold" style="font-size:1.1rem;padding:16px 40px;" onclick="location.reload()">⚔ Play Again</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// GAME DATA
+// ═══════════════════════════════════════════════════════════
+
+const PLAYER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c'];
+const COLOR_NAMES   = ['Crimson','Azure','Emerald','Amber','Violet','Teal'];
+const DICE_FACES    = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+
+const COLOR_HEX = {
+  purple:'#8e44ad', light_blue:'#2980b9', pink:'#c0392b',
+  orange:'#d35400', red:'#922b21', yellow:'#b7950b',
+  green:'#1e8449', dark_blue:'#1a3a6b'
+};
+const COLOR_BG = {
+  purple:'#1a0d24', light_blue:'#0a1a2e', pink:'#240a12',
+  orange:'#221000', red:'#1c0808', yellow:'#1a1600',
+  green:'#0a1a0e', dark_blue:'#080d1a'
+};
+const GROUP_ICONS = {
+  purple:'🏚', light_blue:'🏘', pink:'🏠', orange:'🏛',
+  red:'⚔', yellow:'🏰', green:'🌊', dark_blue:'👑'
+};
+const GROUP_NAMES = {
+  purple:'Ancient Ruins', light_blue:'Forest Hamlets', pink:'Mountain Holdings',
+  orange:'Coastal Settlements', red:'War Fortresses', yellow:'Golden Ports',
+  green:'Sea Citadels', dark_blue:'Royal Capitals'
+};
+const BUILDING_NAMES = ['Outpost','Settlement','Town','City','Capital'];
+const RAILROAD_ICONS = {5:'🐪',15:'🌲',25:'⛰',35:'⚓'};
+
+const COLOR_GROUPS = {
+  purple:    [1,3],
+  light_blue:[6,8,9],
+  pink:      [11,13,14],
+  orange:    [16,18,19],
+  red:       [21,23,24],
+  yellow:    [26,27,29],
+  green:     [31,32,34],
+  dark_blue: [37,39]
+};
+
+const GEAR_ITEMS = [
+  {id:'blade',    name:'Blade of the Lost Knight',  price:400, tag:'⚔ Combat',   effect:'combat_bonus', desc:'+3 to all combat rolls, +1d6 damage',       short:'+3 ATK'},
+  {id:'amulet',   name:'Amulet of Eternal Light',   price:350, tag:'🌟 Utility',  effect:'trap_reveal',  desc:'Reveals traps; negates 1 curse per game',   short:'Trap Ward'},
+  {id:'staff',    name:'Staff of the Arcane Wanderer',price:450,tag:'✨ Travel',  effect:'teleport',     desc:'Teleport to any tile once per full circuit',  short:'Teleport'},
+  {id:'cloak',    name:'Cloak of Shadows',           price:400, tag:'🌑 Stealth', effect:'skip_rent',    desc:'Once per game: skip paying rent on any tile', short:'Skip Rent'},
+  {id:'ring',     name:'Ring of the Elemental Lord', price:500, tag:'🔥 Elemental',effect:'elemental',   desc:'+1d8 elemental damage; half damage from traps',short:'+Elem'},
+  {id:'boots',    name:'Boots of the Swift Wind',    price:350, tag:'💨 Speed',   effect:'move_bonus',   desc:'Roll 3 dice per turn; keep best 2',           short:'+Speed'},
+  {id:'helm',     name:'Helm of the Dragon King',    price:450, tag:'🛡 Defense', effect:'defense',      desc:'+4 AC; reduce all gold losses by 10%',        short:'-10% Loss'},
+  {id:'gauntlets',name:'Gauntlets of the Thunderstrike',price:400,tag:'⚡ Power', effect:'double_attack',desc:'+2 attack; one reroll per combat encounter',  short:'+2 ATK Reroll'},
+];
+
+const POTIONS = [
+  {name:'Potion of Fortune',    effect:'gain_gold',   value:150, desc:'Gain 150 gold'},
+  {name:'Potion of Swiftness',  effect:'extra_move',  value:3,   desc:'Move up to 3 extra spaces'},
+  {name:'Potion of Strength',   effect:'combat_bonus',value:5,   desc:'+5 to next combat roll'},
+  {name:'Elixir of Cursing',    effect:'curse_player',value:0,   desc:'Curse a player: they lose 50g per turn for 3 turns'},
+  {name:'Draught of Wealth',    effect:'gain_gold',   value:200, desc:'Gain 200 gold'},
+  {name:'Potion of Misfortune', effect:'lose_gold',   value:-100,desc:'Oops — lose 100 gold (cursed batch)'},
+  {name:'Tincture of Luck',     effect:'reroll',      value:0,   desc:'Reroll your dice once on any turn'},
+  {name:'Potion of Haste',      effect:'extra_turn',  value:0,   desc:'Take an extra turn immediately'},
+  {name:'Vial of Poison',       effect:'poison_player',value:0,  desc:'Target player loses 75g'},
+  {name:'Brew of Protection',   effect:'negate_rent', value:0,   desc:'Next time you pay rent, it is halved'},
+];
+
+const FATES_WHISPER = [
+  {title:"Fortune's Favor",    story:"A shimmer of golden light surrounds you. The dice of fate spin in your favor!",    effect:'gain_gold', value:100},
+  {title:"The Cursed Coin",    story:"You find a glinting coin on the road — but its magic inverts your next gold gain.", effect:'lose_gold', value:-75},
+  {title:"Ancient Prophecy",   story:"A seer whispers of a destined tile. Move forward 3 spaces, whatever awaits you.", effect:'move', value:3},
+  {title:"Shadowy Deal",       story:"A hooded figure offers gold in exchange for... a future favor. You accept.",       effect:'gain_gold', value:150},
+  {title:"Wrath of the Storm", story:"Winds howl and lightning cracks! All players lose 50 gold to the storm's fury.",   effect:'all_lose', value:-50},
+  {title:"Mysterious Benefactor",story:"An anonymous letter arrives with gold enclosed. No strings attached... probably.",effect:'gain_gold',value:200},
+  {title:"Whispers of Betrayal",story:"A rival has spread rumors about you. Pay 75g in reputation damage.",              effect:'lose_gold', value:-75},
+  {title:"Fate's Gamble",      story:"You find a gambling den. Roll a die: 1-3 lose 100g, 4-6 gain 150g.",              effect:'gamble', value:0},
+  {title:"Gift of the Gods",   story:"A deity takes notice of your journey and gifts you passage. Advance to Go!",       effect:'advance_go', value:0},
+  {title:"The Wheel of Fate",  story:"The wheel spins wildly. Move back 3 spaces and discover what awaits.",             effect:'move', value:-3},
+];
+
+const TREASURE_TROVE = [
+  {title:"Dragon's Hoard",      story:"Behind a false wall: a pile of gold left by a long-dead dragon. Take it!",          effect:'gain_gold', value:200},
+  {title:"Treasure Mimic!",     story:"The chest snaps shut! You fight it off but lose gold in the struggle.",              effect:'lose_gold', value:-100},
+  {title:"Found Heirloom",      story:"An ancient family crest worth a small fortune. The guild buys it immediately.",      effect:'gain_gold', value:150},
+  {title:"Cursed Coin Chest",   story:"Glittering gold — but cursed. Take 100g now but lose 25g per turn for 3 turns.",    effect:'curse_self', value:0},
+  {title:"Ancient Scroll",      story:"A teleportation scroll! Use it to advance to any tile you name. (DM discretion)",   effect:'gain_gold', value:75},
+  {title:"Blessing of Abundance",story:"A divine blessing multiplies your gold. Collect 200g from the treasury.",           effect:'gain_gold', value:200},
+  {title:"Merchant's Cache",    story:"A lost merchant's goods. Return them for a reward of 100g from the bank.",          effect:'gain_gold', value:100},
+  {title:"Wishing Well",        story:"Toss 50g into the well and your wish comes true — gain 250g back!",                 effect:'gain_gold', value:250, cost:50},
+  {title:"Forgotten Map",       story:"A treasure map! The DM reveals a hidden cache on a nearby tile worth 175g.",        effect:'gain_gold', value:175},
+  {title:"Mysterious Potion",   story:"A random potion falls from the trove. You may carry up to 2 potions.",              effect:'give_potion', value:0},
+];
+
+// Full 40-tile board
+const TILES = [
+  // 0 - GO
+  {id:0, name:"Adventurer's Rest", type:'go', symbol:'🏕', gridRow:11,gridCol:11, side:'corner',
+   event:{title:"Adventurer's Rest",story:"You complete another circuit of the realm! Collect 200 gold from the treasury and prepare for another round.",choices:[{text:"Collect 200g and continue",type:'close'}]}},
+  // 1 - PURPLE
+  {id:1, name:'Shadowmoor Village', type:'property', color:'purple', price:60, rent:[2,10,30,90,160,250], houseCost:50, side:'bottom', gridRow:11,gridCol:10,
+   event:{title:'The Assassin\'s Contract',story:'You enter Shadowmoor Village to find it eerily silent. A hooded figure steps from the shadows. "We have an offer, traveler. Help us eliminate a troublesome merchant in Azure Bay, and the village is yours at half price. Refuse... and we may need to deal with you as well." Only you and the DM know that you could also kill the mayor to seize the town outright.',
+     choices:[
+       {text:'Accept the contract (buy at 30g if successful)',type:'combat',dc:10,goldOnFail:0, successMsg:'The deed is done. The assassins bow. The village is yours at half price.',failMsg:'You botch the job. The assassins demand payment for the trouble — 50g.',successEffect:'buy_discount',failEffect:'lose_gold',failValue:50, discountPrice:30},
+       {text:'Decline and buy at full price (60g)',type:'buy'},
+       {text:'Attack the mayor and seize the town (DM secret: auto-succeed)',type:'dm_secret',dc:8,successMsg:'A brutal choice. The mayor falls. Shadowmoor Village belongs to you.',successEffect:'buy_free'},
+       {text:'Leave without engaging',type:'close'},
+     ]}},
+  // 2 - TREASURE TROVE
+  {id:2, name:'Treasure Trove', type:'community', symbol:'💰', side:'bottom', gridRow:11,gridCol:9,
+   event:{title:'Treasure Trove',story:'You discover a hidden cache of wealth and wonder...',choices:[]}},
+  // 3 - PURPLE
+  {id:3, name:'Duskwood Hamlet', type:'property', color:'purple', price:60, rent:[4,20,60,180,320,450], houseCost:50, side:'bottom', gridRow:11,gridCol:8,
+   event:{title:'The Banshee of Duskwood',story:'As you arrive, the hamlet\'s elder rushes to you, wild-eyed. "It only emerges at night! The banshee haunts these woods since the war. Return at dusk and drive it away — only then will the hamlet be safe... and for sale." The banshee\'s wail can drain your gold, but defeating it grants a sizable bonus.',
+     choices:[
+       {text:'Face the banshee now (DC 12)',type:'combat',dc:12,successMsg:'Your blade sings through the spirit. With a final wail, the banshee dissolves. The hamlet cheers!',failMsg:'The banshee\'s wail tears through you — lose 80g.',successEffect:'buy_discount',discountPrice:30,failEffect:'lose_gold',failValue:80},
+       {text:'Pay to hire a priest to exorcise it (80g, guaranteed buy)',type:'pay_then_buy',cost:80},
+       {text:'Buy the hamlet as-is, banshee included (60g)',type:'buy'},
+       {text:'Leave this haunted place',type:'close'},
+     ]}},
+  // 4 - INCOME TAX
+  {id:4, name:"King's Tribute", type:'tax', taxAmount:200, symbol:'👑', side:'bottom', gridRow:11,gridCol:7,
+   event:{title:"King's Tribute",story:'A royal herald blocks your path, hand outstretched. "By order of the Crown, all travelers must pay tribute." You may pay 200 gold or 10% of your wealth — whichever is less.',choices:[{text:'Pay the tribute',type:'tax'},{text:'Attempt to bribe the herald (DC 14, avoid 50%)',type:'combat',dc:14,successMsg:'The herald pockets your lesser bribe and waves you through. You save half!',failMsg:'The herald reports you. Pay 200g plus a 50g fine!',successEffect:'half_tax',failEffect:'double_tax'}]}},
+  // 5 - RAILROAD
+  {id:5, name:'Desert Caravan Crossing', type:'railroad', price:200, side:'bottom', gridRow:11,gridCol:6, symbol:'🐪',
+   event:{title:'Desert Caravan Crossing',story:'A vast desert trade route stretches before you. The caravan master offers you a controlling stake in the crossing for 200 gold — control enough crossings and travelers will pay handsomely to pass.',choices:[{text:'Purchase the Crossing (200g)',type:'buy'},{text:'Pass through at no charge',type:'close'}]}},
+  // 6 - LIGHT BLUE
+  {id:6, name:'Moonlit Glen', type:'property', color:'light_blue', price:100, rent:[6,30,90,270,400,550], houseCost:50, side:'bottom', gridRow:11,gridCol:5,
+   event:{title:'The Druid\'s Bargain',story:'A druid materializes from the mist, eyes glowing silver. "The glen is out of balance, traveler. Fetch me the sacred herbs from Silverleaf Grove and I shall let you claim this land at a discount. Refuse — and the glen\'s curse falls upon you, making it dearer to purchase."',
+     choices:[
+       {text:'Agree to fetch the herbs (DC 10 skill check)',type:'combat',dc:10,successMsg:'You present the herbs. The druid nods. "The balance is restored." Buy at 50g discount.',failMsg:'You fail to find the herbs. The druid\'s curse strikes — the glen now costs extra.',successEffect:'buy_discount',discountPrice:50,failEffect:'raise_price',failValue:50},
+       {text:'Buy the glen at full price (100g)',type:'buy'},
+       {text:'Accept the curse and leave',type:'close'},
+     ]}},
+  // 7 - CHANCE
+  {id:7, name:"Fate's Whisper", type:'chance', symbol:'🌀', side:'bottom', gridRow:11,gridCol:4,
+   event:{title:"Fate's Whisper",story:'The air shimmers and a voice whispers your destiny...',choices:[]}},
+  // 8 - LIGHT BLUE
+  {id:8, name:'Emerald Vale', type:'property', color:'light_blue', price:100, rent:[6,30,90,270,400,550], houseCost:50, side:'bottom', gridRow:11,gridCol:3,
+   event:{title:'The Guardian\'s Challenge',story:'At the vale\'s entrance, a mystical creature — half sphinx, half stag — blocks your path. "Answer my riddle and the vale is yours at a discount. Fail, and you shall not pass until another has tried." The creature\'s amber eyes bore into you.',
+     choices:[
+       {text:'Accept the riddle challenge (DC 11)',type:'combat',dc:11,successMsg:'"Correct!" The guardian steps aside. "The vale is yours, wise traveler." (50g discount)',failMsg:'You stumble on the answer. "Return when your mind is sharper." You cannot purchase today.',successEffect:'buy_discount',discountPrice:50,failEffect:'block_purchase'},
+       {text:'Offer 120g — above asking, no riddle',type:'buy_fixed',fixedPrice:120},
+       {text:'Leave the guardian\'s challenge',type:'close'},
+     ]}},
+  // 9 - LIGHT BLUE
+  {id:9, name:'Silverleaf Grove', type:'property', color:'light_blue', price:120, rent:[8,40,100,300,450,600], houseCost:50, side:'bottom', gridRow:11,gridCol:2,
+   event:{title:'The Forest Guardian',story:'A fierce treant stands sentinel at the grove entrance, bark-skin gleaming. "This grove provides for all who protect it. Guard it for one full circuit of the realm and it is yours — free. Or offer me tribute." It extends a gnarled hand.',
+     choices:[
+       {text:'Offer tribute — 60g for access (buy at 120g)',type:'buy'},
+       {text:'Fight the guardian for the grove (DC 13)',type:'combat',dc:13,successMsg:'After a fierce struggle, the treant yields. "You are worthy. Take the grove." (Buy at 60g)',failMsg:'The treant hurls you back — lose 90g and forfeit your turn.',successEffect:'buy_discount',discountPrice:60,failEffect:'lose_gold_skip',failValue:90},
+       {text:'Leave the guardian in peace',type:'close'},
+     ]}},
+  // 10 - JAIL
+  {id:10, name:"Guard's Quarters", type:'jail', symbol:'⛓', side:'corner', gridRow:11,gridCol:1,
+   event:{title:"Guard's Quarters",story:'The dungeons loom before you. If you\'re just visiting, relax. If you\'ve been sent here, you\'ll need to roll doubles or pay 50g to escape.',choices:[{text:'Continue',type:'close'}]}},
+  // 11 - PINK
+  {id:11, name:"Dragon's Hollow", type:'property', color:'pink', price:140, rent:[10,50,150,450,625,750], houseCost:100, side:'left', gridRow:10,gridCol:1,
+   event:{title:'The Young Dragon',story:'A young copper dragon, scales gleaming, lounges on a pile of gold in this hollow. One eye opens. "Ah, a visitor. You wish to claim my hollow? Then negotiate — or prove your strength. I\'m bored either way." Smoke curls from its nostrils.',
+     choices:[
+       {text:'Negotiate diplomatically (DC 12 Charisma)',type:'combat',dc:12,successMsg:'"Impressive silver tongue. 100g and it\'s yours." The dragon curls back to sleep.',failMsg:'The dragon laughs and breathes fire. Lose 100g.',successEffect:'buy_fixed',fixedPrice:100,failEffect:'lose_gold',failValue:100},
+       {text:'Challenge it to combat (DC 15)',type:'combat',dc:15,successMsg:'You defeat the dragon! It yields the hollow and its hoard — buy free, gain 50g bonus!',failMsg:'The dragon wins. Lose 120g and retreat.',successEffect:'buy_free_bonus',bonusGold:50,failEffect:'lose_gold',failValue:120},
+       {text:'Pay asking price (140g)',type:'buy'},
+       {text:'Leave the hollow',type:'close'},
+     ]}},
+  // 12 - MAGE'S GUILD
+  {id:12, name:"Mage's Guild", type:'utility', utilityType:'guild', price:150, symbol:'🔮', side:'left', gridRow:9,gridCol:1,
+   event:{title:"Mage's Guild",story:'The guild\'s tower hums with arcane energy. A robed master greets you. "We offer only the finest enchanted equipment to worthy adventurers — for the right price." You may join the guild (150g) for utility benefits, or browse equipment directly.',choices:[{text:'Browse Equipment',type:'open_gear_shop'},{text:'Purchase Guild Membership (150g) + shop',type:'buy_then_shop'},{text:'Leave',type:'close'}]}},
+  // 13 - PINK
+  {id:13, name:'Stormwatch Tower', type:'property', color:'pink', price:140, rent:[10,50,150,450,625,750], houseCost:100, side:'left', gridRow:8,gridCol:1,
+   event:{title:'The Guardian\'s Riddle',story:'The tower\'s stone guardian awakens at your approach, runes blazing across its body. "Three riddles stand between you and this tower. Answer correctly and it is yours at a discount. Fail all three and a curse follows you." Its voice echoes like thunder.',
+     choices:[
+       {text:'Answer the riddles (DC 11)',type:'combat',dc:11,successMsg:'"Correct on all counts! The tower recognizes your wisdom." Buy at 90g.',failMsg:'"You have failed. A curse follows you." Lose 60g. Cannot purchase today.',successEffect:'buy_fixed',fixedPrice:90,failEffect:'lose_gold_block',failValue:60},
+       {text:'Pay full price and skip the riddles (140g)',type:'buy'},
+       {text:'Leave the tower',type:'close'},
+     ]}},
+  // 14 - PINK
+  {id:14, name:'Glimmerstone Keep', type:'property', color:'pink', price:160, rent:[12,60,180,500,700,900], houseCost:100, side:'left', gridRow:7,gridCol:1,
+   event:{title:'The Hidden Treasure',story:'The keep is famous for a legendary treasure buried within its walls. An old steward meets you. "Pay our treasure hunters and they\'ll find it for you — or search yourself. The treasure might double your gold... or trigger a trap." A twinkle in his eye suggests he knows which it is.',
+     choices:[
+       {text:'Hire treasure hunters (100g + buy at 160g)',type:'pay_then_buy',cost:100},
+       {text:'Search yourself (DC 13, risk/reward)',type:'combat',dc:13,successMsg:'You find the treasure! A cache of 200g and the keep is yours free!',failMsg:'A trap! Lose 100g from the keep\'s defenses.',successEffect:'buy_free_bonus',bonusGold:200,failEffect:'lose_gold',failValue:100},
+       {text:'Buy the keep outright (160g)',type:'buy'},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 15 - RAILROAD
+  {id:15, name:'Forest Caravan Crossing', type:'railroad', price:200, symbol:'🌲', side:'left', gridRow:6,gridCol:1,
+   event:{title:'Forest Caravan Crossing',story:'The great forest road is vital to trade across the realm. Bandits have been harassing the route, making the crossing doubly valuable. The current master offers it to you.',choices:[{text:'Purchase the Crossing (200g)',type:'buy'},{text:'Move on',type:'close'}]}},
+  // 16 - ORANGE
+  {id:16, name:'Crimson Spire', type:'property', color:'orange', price:180, rent:[14,70,200,550,750,950], houseCost:100, side:'left', gridRow:5,gridCol:1,
+   event:{title:'The Stolen Artifact',story:'A mysterious NPC — a tall elf with silver hair — bars your path at the spire\'s gate. "I cannot allow purchase until a matter is resolved. A thief stole the Crimson Amulet and fled to Shadowmoor Village. Return it to me and the spire is yours at half price. Refuse, and you pay full — if I even let you." Their hand rests on a blade.',
+     choices:[
+       {text:'Promise to retrieve the artifact from Shadowmoor (DC 12)',type:'combat',dc:12,successMsg:'"You have retrieved it! My gratitude — and the spire." Buy at 90g.',failMsg:'"You failed me. The full price, then, and quickly." Pay 180g.',successEffect:'buy_fixed',fixedPrice:90,failEffect:'buy'},
+       {text:'Pay full price immediately (180g)',type:'buy'},
+       {text:'Attempt to bluff (DC 15)',type:'combat',dc:15,successMsg:'"...Very well. Take it at half price, and may your word prove true."',failMsg:'"Liar! Pay full price and consider yourself fortunate I don\'t draw steel."',successEffect:'buy_fixed',fixedPrice:90,failEffect:'buy'},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 17 - TREASURE TROVE
+  {id:17, name:'Treasure Trove', type:'community', symbol:'💰', side:'left', gridRow:4,gridCol:1,
+   event:{title:'Treasure Trove',story:'You discover a hidden cache of wealth and wonder...',choices:[]}},
+  // 18 - ORANGE
+  {id:18, name:'Frostwind Borough', type:'property', color:'orange', price:180, rent:[14,70,200,550,750,950], houseCost:100, side:'left', gridRow:3,gridCol:1,
+   event:{title:'The Eternal Winter',story:'The borough is trapped in unnatural frost — flowers of ice bloom on every surface. An ice mage approaches, exhaling frozen breath. "I can free these people if you bring me a Flame Crystal from the Mage\'s Guild — 80g covers the ingredients. Once freed, the borough is yours. Refuse, and anyone landing here loses gold to the cold."',
+     choices:[
+       {text:'Fund the flame crystal ritual (80g + buy at 180g)',type:'pay_then_buy',cost:80},
+       {text:'Buy the frozen borough as-is (140g, cursed discount)',type:'buy_fixed',fixedPrice:140},
+       {text:'Fight the ice mage to end the winter (DC 14)',type:'combat',dc:14,successMsg:'The ice mage falls. The frost shatters. The grateful borough is yours free!',failMsg:'Ice shards tear through you — lose 100g.',successEffect:'buy_free',failEffect:'lose_gold',failValue:100},
+       {text:'Leave the frozen borough',type:'close'},
+     ]}},
+  // 19 - ORANGE (Azure Bay)
+  {id:19, name:'Azure Bay', type:'property', color:'orange', price:200, rent:[16,80,220,600,800,1000], houseCost:100, side:'left', gridRow:2,gridCol:1,
+   event:{title:'The Mayor\'s Request',story:'As you arrive at the gleaming port of Azure Bay, a massive figure blocks the dock — a Hagrid-like mayor, beard full of sea-birds. "Traveler! I have need of your blade. A ghoul haunts the lower docks. Slay it and I\'ll deed you the bay. Refuse..." he lowers his voice, "...you could always find other ways to claim leadership of this town. The mayoralty, for instance, has... vacancies." He winks slowly.',
+     choices:[
+       {text:'Slay the ghoul (DC 12)',type:'combat',dc:12,successMsg:'The ghoul dissolves into black smoke. The mayor throws his arms wide. "HERO! Azure Bay is YOURS!"',failMsg:'The ghoul overpowers you. Retreat — lose 80g.',successEffect:'buy_free',failEffect:'lose_gold',failValue:80},
+       {text:'Buy the bay outright (200g)',type:'buy'},
+       {text:'Challenge the mayor (DM secret — kill him, take the town free)',type:'dm_secret',dc:10,successMsg:'It was a short fight. The town watch looks the other way. Azure Bay is yours.',successEffect:'buy_free'},
+       {text:'Pass on Azure Bay',type:'close'},
+     ]}},
+  // 20 - FREE PARKING
+  {id:20, name:'Safe Haven', type:'free_parking', symbol:'⛺', side:'corner', gridRow:1,gridCol:1,
+   event:{title:'Safe Haven',story:'A rare peace. No tolls, no monsters, no quests. Rest here — safe from harm. Taxes and fines accumulate here; the next player to land collects the pot!',choices:[{text:'Rest and continue',type:'close'}]}},
+  // 21 - RED
+  {id:21, name:'Ironclad Fortress', type:'property', color:'red', price:220, rent:[18,90,250,700,875,1050], houseCost:150, side:'top', gridRow:1,gridCol:2,
+   event:{title:'The Fortress Contract',story:'The fortress commander, a scarred dwarf, greets you at the gates. "The walls are weakened from the last siege. Invest 100g in repairs and the fortress becomes worth more — and yours for the asking. Refuse, and it remains vulnerable — cheaper, but any attack costs you later."',
+     choices:[
+       {text:'Fund repairs (100g) + buy at 220g',type:'pay_then_buy',cost:100},
+       {text:'Buy the weakened fortress at a discount (160g)',type:'buy_fixed',fixedPrice:160},
+       {text:'Seize it by force (DC 15)',type:'combat',dc:15,successMsg:'Your forces overwhelm the garrison. The fortress falls — and is yours free!',failMsg:'The garrison holds. You retreat, 130g lighter.',successEffect:'buy_free',failEffect:'lose_gold',failValue:130},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 22 - CHANCE
+  {id:22, name:"Fate's Whisper", type:'chance', symbol:'🌀', side:'top', gridRow:1,gridCol:3,
+   event:{title:"Fate's Whisper",story:'The air shimmers and a voice whispers your destiny...',choices:[]}},
+  // 23 - RED
+  {id:23, name:'Hollowfen Citadel', type:'property', color:'red', price:220, rent:[18,90,250,700,875,1050], houseCost:150, side:'top', gridRow:1,gridCol:4,
+   event:{title:'The Rival Factions',story:'Two armed factions face each other across the citadel courtyard, frozen in standoff. A courier rushes to you: "Both factions will deed the citadel to whoever breaks the deadlock!" You could ally with one, adjudicate peace, or simply wait them out.',
+     choices:[
+       {text:'Ally with the stronger faction (DC 11 Persuasion)',type:'combat',dc:11,successMsg:'Your endorsement tips the balance. The winning faction hands you the deed. Buy at 150g.',failMsg:'Your chosen faction loses the standoff. You\'re caught in the crossfire — lose 90g.',successEffect:'buy_fixed',fixedPrice:150,failEffect:'lose_gold',failValue:90},
+       {text:'Adjudicate peace (DC 14 Diplomacy)',type:'combat',dc:14,successMsg:'Both factions bow. "A worthy neutral party." They share the deed with you — buy free!',failMsg:'Peace talks collapse into fighting. Lose 80g escaping.',successEffect:'buy_free',failEffect:'lose_gold',failValue:80},
+       {text:'Buy the citadel at full price (220g)',type:'buy'},
+       {text:'Leave them to it',type:'close'},
+     ]}},
+  // 24 - RED
+  {id:24, name:'Brightwood Hold', type:'property', color:'red', price:240, rent:[20,100,300,750,925,1100], houseCost:150, side:'top', gridRow:1,gridCol:5,
+   event:{title:'The Goblin Horde',story:'A knight in battered silver armor meets you on the road. "Thank the gods! A goblin horde approaches the hold. Fight at my side and you shall have the deed once we repel them. Should you fall, well — the goblins take the hold and you pay in blood." The horns sound in the distance.',
+     choices:[
+       {text:'Stand and fight (DC 13)',type:'combat',dc:13,successMsg:'"Brilliant! The goblins flee!" The knight claps you on the shoulder. "The hold is yours, friend."',failMsg:'The goblins break through. Lose 120g and your turn in the chaos.',successEffect:'buy_free',failEffect:'lose_gold_skip',failValue:120},
+       {text:'Pay the knight to handle it (120g) + buy at 240g',type:'pay_then_buy',cost:120},
+       {text:'Buy the hold outright before the attack (240g)',type:'buy'},
+       {text:'Retreat',type:'close'},
+     ]}},
+  // 25 - RAILROAD
+  {id:25, name:'Mountain Caravan Crossing', type:'railroad', price:200, symbol:'⛰', side:'top', gridRow:1,gridCol:6,
+   event:{title:'Mountain Caravan Crossing',story:'High in the peaks, this crossing controls all trade between the northern and southern realms. Whoever controls it gains steady income from every merchant who dares the pass.',choices:[{text:'Purchase the Crossing (200g)',type:'buy'},{text:'Continue on',type:'close'}]}},
+  // 26 - YELLOW
+  {id:26, name:'Golden Harbor', type:'property', color:'yellow', price:260, rent:[22,110,330,800,975,1150], houseCost:150, side:'top', gridRow:1,gridCol:7,
+   event:{title:'Pirates at the Harbor',story:'You arrive to find the harbor under siege! A pirate fleet blockades the port. The harbormaster waves from the docks: "Drive them off or join them!" A choice that will define your reputation in the realm.',
+     choices:[
+       {text:'Defend the harbor (DC 13)',type:'combat',dc:13,successMsg:'"The pirates break!" The harbormaster embraces you. "The harbor is yours, hero. At a token price — 130g."',failMsg:'The pirates repel you. Lose 100g. The harbor remains contested.',successEffect:'buy_fixed',fixedPrice:130,failEffect:'lose_gold',failValue:100},
+       {text:'Join the pirates — share in their loot (gain 150g, can\'t buy)',type:'gain_gold',gainValue:150},
+       {text:'Buy the harbor at full price (260g)',type:'buy'},
+       {text:'Leave the chaos',type:'close'},
+     ]}},
+  // 27 - YELLOW
+  {id:27, name:'Whisperwind Abbey', type:'property', color:'yellow', price:260, rent:[22,110,330,800,975,1150], houseCost:150, side:'top', gridRow:1,gridCol:8,
+   event:{title:'The Secretive Monks',story:'The abbey radiates serenity — but the monks inside are famously secretive. A novice approaches. "A donation of 80g reveals the abbey\'s secrets, granting you the right to purchase. Or..." they lower their eyes, "...you may try to slip past the wards. The monks have not always been merciful to trespassers."',
+     choices:[
+       {text:'Donate to the monks (80g) + buy at 260g',type:'pay_then_buy',cost:80},
+       {text:'Sneak past the wards (DC 14)',type:'combat',dc:14,successMsg:'You move like shadow through the abbey. The deed is in your hands before dawn.',failMsg:'A ward triggers. The monks are not pleased. Lose 100g.',successEffect:'buy_free',failEffect:'lose_gold',failValue:100},
+       {text:'Buy the abbey honestly (260g)',type:'buy'},
+       {text:'Leave the monks in peace',type:'close'},
+     ]}},
+  // 28 - POTION SHOP
+  {id:28, name:'Potion Shop', type:'utility', utilityType:'potions', price:150, symbol:'⚗', side:'top', gridRow:1,gridCol:9,
+   event:{title:'The Potion Shop',story:'Bubbling cauldrons and glowing vials fill every shelf. The alchemist grins over thick spectacles. "Every potion is unique, dearie — effects guaranteed, though perhaps not what you expected. 200g each, 350g for two."',choices:[{text:'Browse Potions (200g each)',type:'open_potion_shop'},{text:'Leave',type:'close'}]}},
+  // 29 - YELLOW
+  {id:29, name:'Sunfire Plaza', type:'property', color:'yellow', price:280, rent:[24,120,360,850,1025,1200], houseCost:150, side:'top', gridRow:1,gridCol:10,
+   event:{title:'The Grand Festival',story:'The plaza erupts with color and music — a grand festival is underway! The plaza master beckons. "Champion our festival games and win the plaza at a discount. Or perhaps you\'d prefer to browse the rare goods on sale — items that could change the course of your journey."',
+     choices:[
+       {text:'Compete in the festival games (DC 11)',type:'combat',dc:11,successMsg:'"CHAMPION!" A golden wreath on your head and the deed in your hand. Buy at 140g!',failMsg:'A valiant effort — the crowd cheers anyway. You may still buy at full price.',successEffect:'buy_fixed',fixedPrice:140,failEffect:'buy'},
+       {text:'Buy the plaza directly (280g)',type:'buy'},
+       {text:'Browse rare goods at the festival (visit shop)',type:'open_gear_shop'},
+       {text:'Enjoy the festival and move on',type:'close'},
+     ]}},
+  // 30 - GO TO JAIL
+  {id:30, name:"Fate's Judgement", type:'go_to_jail', symbol:'⚖', side:'corner', gridRow:1,gridCol:11,
+   event:{title:"Fate's Judgement",story:'The ground opens beneath you! Dark hands drag you toward the Dungeon Keep. No arguments, no appeals — your fate is sealed.',choices:[{text:'Accept your fate',type:'goto_jail'}]}},
+  // 31 - GREEN
+  {id:31, name:'Oceanus Citadel', type:'property', color:'green', price:300, rent:[26,130,390,900,1100,1275], houseCost:200, side:'right', gridRow:2,gridCol:11,
+   event:{title:'The Sea Monster',story:'The citadel guards are panic-stricken. "A sea monster terrorizes the harbor — trade has collapsed!" A naval officer salutes. "Fund a fleet to hunt it (200g) or take it on yourself. Drive it off and the citadel\'s value — and our gratitude — is yours."',
+     choices:[
+       {text:'Fund the hunting fleet (200g) + buy at 300g',type:'pay_then_buy',cost:200},
+       {text:'Fight the sea monster personally (DC 15)',type:'combat',dc:15,successMsg:'You slay the beast and haul in a 200g bounty! The citadel is yours free!',failMsg:'The monster nearly drowns you — lose 150g.',successEffect:'buy_free_bonus',bonusGold:200,failEffect:'lose_gold',failValue:150},
+       {text:'Buy the troubled citadel (300g)',type:'buy'},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 32 - GREEN
+  {id:32, name:'Thornmere Keep', type:'property', color:'green', price:300, rent:[26,130,390,900,1100,1275], houseCost:200, side:'right', gridRow:3,gridCol:11,
+   event:{title:'The Rival Siege',story:'Two noble houses lay siege to the keep simultaneously, each convinced they have rightful claim. An elderly steward slips you a note: "Settle this and the keep is yours." Three ways to end a siege: diplomacy, force, or treachery.',
+     choices:[
+       {text:'Diplomatically broker a settlement (DC 14)',type:'combat',dc:14,successMsg:'"Masterful! Both houses concede to your authority." Buy at 150g.',failMsg:'Negotiations collapse. Caught in crossfire — lose 120g.',successEffect:'buy_fixed',fixedPrice:150,failEffect:'lose_gold',failValue:120},
+       {text:'Drive both armies off (DC 16)',type:'combat',dc:16,successMsg:'You route both armies! The stunned steward hands you the deed. Free!',failMsg:'You are overwhelmed. Lose 150g.',successEffect:'buy_free',failEffect:'lose_gold',failValue:150},
+       {text:'Buy the embattled keep outright (300g)',type:'buy'},
+       {text:'Leave them to their quarrel',type:'close'},
+     ]}},
+  // 33 - TREASURE TROVE
+  {id:33, name:'Treasure Trove', type:'community', symbol:'💰', side:'right', gridRow:4,gridCol:11,
+   event:{title:'Treasure Trove',story:'You discover a hidden cache of wealth and wonder...',choices:[]}},
+  // 34 - GREEN
+  {id:34, name:'Crownsgate', type:'property', color:'green', price:320, rent:[28,150,450,1000,1200,1400], houseCost:200, side:'right', gridRow:5,gridCol:11,
+   event:{title:'The City Council',story:'Crownsgate\'s legendary council convenes in golden session. "We do not simply sell this city," the chief councilor declares. "You must earn our favor." Five tasks are listed on a scroll. Complete enough and the city is yours — at a price commensurate with your effort.',
+     choices:[
+       {text:'Complete one task (DC 11) — buy at 250g',type:'combat',dc:11,successMsg:'"One task complete. Sufficient." The council stamps your deed. 250g.',failMsg:'"Unsatisfactory." The council adjourns. Cannot purchase today.',successEffect:'buy_fixed',fixedPrice:250,failEffect:'block_purchase'},
+       {text:'Complete three tasks (DC 14) — buy at 160g',type:'combat',dc:14,successMsg:'"Remarkable achievement! The city is yours at generous terms." 160g.',failMsg:'"Too difficult? Perhaps return when you\'re stronger." Lose 80g in wasted effort.',successEffect:'buy_fixed',fixedPrice:160,failEffect:'lose_gold',failValue:80},
+       {text:'Buy without the council\'s favor (320g, full price)',type:'buy'},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 35 - RAILROAD
+  {id:35, name:'Coastal Caravan Crossing', type:'railroad', price:200, symbol:'⚓', side:'right', gridRow:6,gridCol:11,
+   event:{title:'Coastal Caravan Crossing',story:'This coastal route connects the realm\'s greatest ports. Pirates regularly target it, making its owner both wealthy and perpetually busy. The current master, tired of the fighting, is selling.',choices:[{text:'Purchase the Crossing (200g)',type:'buy'},{text:'Continue your journey',type:'close'}]}},
+  // 36 - CHANCE
+  {id:36, name:"Fate's Whisper", type:'chance', symbol:'🌀', side:'right', gridRow:7,gridCol:11,
+   event:{title:"Fate's Whisper",story:'The air shimmers and a voice whispers your destiny...',choices:[]}},
+  // 37 - DARK BLUE
+  {id:37, name:"King's Landing", type:'property', color:'dark_blue', price:350, rent:[35,175,500,1100,1300,1500], houseCost:200, side:'right', gridRow:8,gridCol:11,
+   event:{title:'The King\'s Trial',story:'You are summoned before the king himself, who eyes you with interest. "Many have desired this city. Few have proved worthy. I offer a quest: recover the Royal Scepter from the ruins three tiles hence. Return it and the Landing is yours — with a title." He leans forward. "Or challenge my champion."',
+     choices:[
+       {text:'Accept the royal quest (DC 13)',type:'combat',dc:13,successMsg:'"You have the scepter! Rise, Sir Adventurer. King\'s Landing is your domain." Buy at 175g.',failMsg:'"A disappointment. Pay tribute for wasting the court\'s time." Lose 150g.',successEffect:'buy_fixed',fixedPrice:175,failEffect:'lose_gold',failValue:150},
+       {text:'Challenge the king\'s champion (DC 16)',type:'combat',dc:16,successMsg:'"Extraordinary! Not in a decade has my champion fallen. Take the city — free!" +100g bonus.',failMsg:'"Soundly defeated. Pay 200g in court fines and healing."',successEffect:'buy_free_bonus',bonusGold:100,failEffect:'lose_gold',failValue:200},
+       {text:'Buy the city outright (350g)',type:'buy'},
+       {text:'Decline the king\'s invitation',type:'close'},
+     ]}},
+  // 38 - LUXURY TAX
+  {id:38, name:"Noble's Levy", type:'tax', taxAmount:100, symbol:'💎', side:'right', gridRow:9,gridCol:11,
+   event:{title:"Noble's Levy",story:'A perfumed tax collector in velvet robes demands payment. "100 gold, if you please. The nobility must be maintained." You could pay — or try your luck.',choices:[{text:'Pay the Levy (100g)',type:'tax'},{text:'Attempt to bribe the collector (DC 12)',type:'combat',dc:12,successMsg:'"A reasonable counter-offer." He pockets your 50g and departs.',failMsg:'"GUARDS!" Fine doubled — pay 200g.',successEffect:'half_tax',failEffect:'double_tax'}]}},
+  // 39 - DARK BLUE
+  {id:39, name:'Highspire City', type:'property', color:'dark_blue', price:400, rent:[50,200,600,1400,1700,2000], houseCost:200, side:'right', gridRow:10,gridCol:11,
+   event:{title:'The Merchant Prince',story:'Highspire City — the crown jewel of the realm — glitters above you. A merchant prince in silk robes meets you at the gate. "Investment opportunity of a lifetime. Stake 200g with me — I\'ll double it. Then buy the city." His smile doesn\'t quite reach his eyes. Could be a swindler. Could be legitimate.',
+     choices:[
+       {text:'Invest with the merchant (200g, DC 10 to detect fraud)',type:'gamble_invest',investAmount:200},
+       {text:'Buy Highspire outright (400g)',type:'buy'},
+       {text:'Investigate the merchant first (DC 13)',type:'combat',dc:13,successMsg:'"You caught my bluff. Very well — I\'ll sell you the city at 300g to avoid scandal."',failMsg:'"Satisfied? Good. 400g, then." You find nothing suspicious.',successEffect:'buy_fixed',fixedPrice:300,failEffect:'buy'},
+       {text:'The city can wait',type:'close'},
+     ]}},
+];
+
+// ═══════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════
+let G = {
+  players: [],
+  currentIdx: 0,
+  phase: 'setup',
+  tileOwners: {},      // tileId -> playerIdx
+  tilePrices: {},      // tileId -> current price (can be modified by events)
+  deckFates: [],
+  deckTreasure: [],
+  freeParking: 0,      // gold accumulated at free parking
+  turnPhase: 'roll',   // 'roll' | 'action' | 'end'
+  doublesCount: 0,
+  doublesPending: false,
+  mortgaged: {},
+  actionPending: null,
+};
+
+// ═══════════════════════════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════════════════════════
+let setupPlayerCount = 3;
+let setupPlayers = [
+  {name:'Aragorn', color:0},
+  {name:'Gandalf', color:1},
+  {name:'Legolas', color:2},
+  {name:'Gimli',   color:3},
+];
+
+function setPlayerCount(n){
+  setupPlayerCount = n;
+  document.querySelectorAll('.count-btn').forEach((b,i)=>b.classList.toggle('active', i+2===n));
+  renderSetupRows();
+}
+
+function renderSetupRows(){
+  const c = document.getElementById('player-setup-rows');
+  c.innerHTML = '';
+  for(let i=0;i<4;i++){
+    const active = i < setupPlayerCount;
+    const p = setupPlayers[i];
+    c.innerHTML += `
+    <div class="player-row ${active?'':'inactive'}" id="prow-${i}">
+      <label>Player ${i+1}</label>
+      <input type="text" id="pname-${i}" value="${p.name}" placeholder="Name" ${active?'':'disabled'}>
+      <div class="color-pick" id="cpick-${i}">
+        ${PLAYER_COLORS.map((col,ci)=>`<div class="color-dot ${p.color===ci?'selected':''}" style="background:${col}" onclick="setColor(${i},${ci})"></div>`).join('')}
+      </div>
+    </div>`;
+  }
+}
+
+function setColor(playerIdx, colorIdx){
+  setupPlayers[playerIdx].color = colorIdx;
+  renderSetupRows();
+}
+
+function startGame(){
+  G.players = [];
+  for(let i=0;i<setupPlayerCount;i++){
+    const nameEl = document.getElementById(`pname-${i}`);
+    G.players.push({
+      idx: i,
+      name: nameEl ? nameEl.value || `Player ${i+1}` : `Player ${i+1}`,
+      color: PLAYER_COLORS[setupPlayers[i].color],
+      gold: 2000,
+      pos: 0,
+      gear: null,
+      potions: [],
+      inJail: false,
+      jailTurns: 0,
+      skipTurns: 0,
+      curse: 0,
+      curseAmount: 0,
+      bankrupt: false,
+    });
+  }
+  G.tileOwners = {};
+  G.buildings = {};
+  G.tilePrices = {};
+  TILES.forEach(t=>{ if(t.price) G.tilePrices[t.id]=t.price; });
+  G.deckFates = shuffle([...FATES_WHISPER]);
+  G.deckTreasure = shuffle([...TREASURE_TROVE]);
+  G.freeParking = 0;
+  G.currentIdx = 0;
+  G.doublesCount = 0;
+  G.doublesPending = false;
+  G.mortgaged = {};
+  G.phase = 'playing';
+  G.turnPhase = 'roll';
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  buildBoard();
+  buildCenterArt();
+  renderPlayerCards();
+  renderTokens();
+  startTurn();
+  log('⚔ The quest begins! May fortune favor the bold.','highlight');
+}
+
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// CENTER BOARD ART (SVG fantasy realm map)
+// ═══════════════════════════════════════════════════════════
+function buildCenterArt(){
+  const el = document.getElementById('center-art');
+  if(!el) return;
+  el.innerHTML = `
+<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;opacity:0.82;">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0e2212"/>
+      <stop offset="100%" stop-color="#060e08"/>
+    </radialGradient>
+    <radialGradient id="glowGold" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffd700" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#ffd700" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur2"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="blur4"><feGaussianBlur stdDeviation="4"/></filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="500" height="500" fill="url(#bgGrad)"/>
+  <circle cx="250" cy="250" r="240" fill="url(#glowGold)"/>
+
+  <!-- Parchment-style border ring -->
+  <circle cx="250" cy="250" r="235" fill="none" stroke="#ffd700" stroke-width="1.5" stroke-opacity="0.18" stroke-dasharray="6 4"/>
+  <circle cx="250" cy="250" r="228" fill="none" stroke="#ffd700" stroke-width="0.5" stroke-opacity="0.1"/>
+
+  <!-- Water / sea fill (light teal) -->
+  <ellipse cx="100" cy="380" rx="90" ry="60" fill="#0a2030" opacity="0.7"/>
+  <ellipse cx="130" cy="400" rx="70" ry="40" fill="#0d2a3a" opacity="0.5"/>
+  <text x="80" y="415" fill="#1a6a8a" font-size="9" font-family="serif" opacity="0.6">~ ~ ~</text>
+  <text x="95" y="430" fill="#1a6a8a" font-size="9" font-family="serif" opacity="0.6">~ ~ ~</text>
+
+  <!-- Forest (left) -->
+  ${[...Array(14)].map((_,i)=>{const x=55+i%4*22,y=180+Math.floor(i/4)*24+i%3*5;return`<polygon points="${x},${y} ${x-10},${y+18} ${x+10},${y+18}" fill="#1a4a22" opacity="0.75"/>
+  <polygon points="${x},${y+6} ${x-11},${y+22} ${x+11},${y+22}" fill="#1f5a28" opacity="0.6"/>`}).join('')}
+
+  <!-- Mountains (top right) -->
+  ${[{x:320,y:120,s:1.2},{x:360,y:130,s:1},{x:395,y:115,s:1.3},{x:430,y:125,s:0.9},{x:350,y:155,s:0.7},{x:415,y:150,s:0.8}].map(m=>`
+  <polygon points="${m.x},${m.y-40*m.s} ${m.x-30*m.s},${m.y+15} ${m.x+30*m.s},${m.y+15}" fill="#2a3a28" opacity="0.8"/>
+  <polygon points="${m.x},${m.y-40*m.s} ${m.x-12*m.s},${m.y-16*m.s} ${m.x+12*m.s},${m.y-16*m.s}" fill="#d4c4a0" opacity="0.35"/>
+  `).join('')}
+
+  <!-- Rolling hills (bottom center) -->
+  <ellipse cx="280" cy="390" rx="100" ry="35" fill="#183020" opacity="0.6"/>
+  <ellipse cx="340" cy="380" rx="80" ry="28" fill="#1e3a28" opacity="0.5"/>
+
+  <!-- River winding across -->
+  <path d="M120,250 Q180,230 220,265 Q260,300 310,280 Q350,260 390,290" fill="none" stroke="#1a5a7a" stroke-width="5" stroke-opacity="0.55" stroke-linecap="round"/>
+  <path d="M120,250 Q180,230 220,265 Q260,300 310,280 Q350,260 390,290" fill="none" stroke="#2a8aaa" stroke-width="2" stroke-opacity="0.3" stroke-linecap="round"/>
+
+  <!-- Castle center-left -->
+  <rect x="195" y="275" width="46" height="38" fill="#1a2a1a" stroke="#4a6a4a" stroke-width="1.2" opacity="0.9"/>
+  <rect x="190" y="265" width="14" height="20" fill="#1e301e" stroke="#4a6a4a" stroke-width="1"/>
+  <rect x="233" y="265" width="14" height="20" fill="#1e301e" stroke="#4a6a4a" stroke-width="1"/>
+  <rect x="208" y="265" width="20" height="16" fill="#1e301e" stroke="#4a6a4a" stroke-width="1"/>
+  <!-- Battlements -->
+  ${[190,197,204,211,218,225,232,239].map(x=>`<rect x="${x}" y="${x<208||x>228?260:260}" width="4" height="6" fill="#253525"/>`).join('')}
+  <!-- Gate -->
+  <rect x="209" y="288" width="18" height="25" rx="9" fill="#0a0f0a"/>
+  <!-- Flag -->
+  <line x1="218" y1="260" x2="218" y2="248" stroke="#888" stroke-width="1.2"/>
+  <polygon points="218,248 230,253 218,258" fill="#c0392b" opacity="0.8"/>
+
+  <!-- Village cluster (bottom right) -->
+  ${[{x:350,y:330},{x:372,y:320},{x:390,y:335},{x:364,y:348}].map(v=>`
+  <rect x="${v.x}" y="${v.y}" width="14" height="12" fill="#1a2820" stroke="#3a4a3a" stroke-width="0.8"/>
+  <polygon points="${v.x-1},${v.y} ${v.x+7},${v.y-8} ${v.x+15},${v.y}" fill="#2a1a10" stroke="#4a3a2a" stroke-width="0.8"/>
+  `).join('')}
+
+  <!-- Roads -->
+  <path d="M218,313 Q240,320 280,315 Q330,308 360,330" fill="none" stroke="#3a4a2a" stroke-width="4" stroke-opacity="0.4" stroke-dasharray="8 4"/>
+
+  <!-- Compass rose -->
+  <g transform="translate(420,390)">
+    <circle r="28" fill="#060e08" stroke="#ffd700" stroke-width="1" stroke-opacity="0.4"/>
+    <polygon points="0,-22 4,-8 0,-12 -4,-8" fill="#ffd700" opacity="0.7"/>
+    <polygon points="0,22 4,8 0,12 -4,8" fill="#8a7a4a" opacity="0.6"/>
+    <polygon points="-22,0 -8,-4 -12,0 -8,4" fill="#8a7a4a" opacity="0.6"/>
+    <polygon points="22,0 8,-4 12,0 8,4" fill="#8a7a4a" opacity="0.6"/>
+    <circle r="4" fill="#ffd700" opacity="0.5"/>
+    <text x="-3" y="-14" fill="#ffd700" font-size="8" font-family="serif" opacity="0.8">N</text>
+  </g>
+
+  <!-- Decorative corner ornaments -->
+  ${[[50,50,0],[450,50,90],[450,450,180],[50,450,270]].map(([cx,cy,rot])=>`
+  <g transform="translate(${cx},${cy}) rotate(${rot})">
+    <path d="M0,0 L20,0 L20,3 L3,3 L3,20 L0,20 Z" fill="#ffd700" opacity="0.12"/>
+  </g>`).join('')}
+
+  <!-- Title lettering -->
+  <text x="250" y="212" text-anchor="middle" font-family="Georgia,serif" font-size="28" font-weight="700"
+        fill="#ffd700" opacity="0.22" letter-spacing="3">DnDopoly</text>
+  <text x="250" y="232" text-anchor="middle" font-family="Georgia,serif" font-size="9"
+        fill="#ffd700" opacity="0.15" letter-spacing="8">REALM OF FORTUNE</text>
+
+  <!-- Player icons at start positions (decorative) -->
+  <circle cx="250" cy="250" r="3" fill="#ffd700" opacity="0.25"/>
+
+  <!-- Dotted legend lines -->
+  <text x="85" y="176" fill="#ffd700" font-size="7" font-family="serif" opacity="0.35" letter-spacing="1">ANCIENT WOOD</text>
+  <text x="310" y="100" fill="#ffd700" font-size="7" font-family="serif" opacity="0.35" letter-spacing="1">DRAGONSPINE PEAKS</text>
+  <text x="175" y="320" fill="#ffd700" font-size="7" font-family="serif" opacity="0.35" letter-spacing="1">REALM'S HEART KEEP</text>
+  <text x="55" y="395" fill="#ffd700" font-size="7" font-family="serif" opacity="0.35" letter-spacing="1">AZURE SEA</text>
+</svg>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// BOARD BUILDING
+// ═══════════════════════════════════════════════════════════
+function buildBoard(){
+  const board = document.getElementById('game-board');
+  [...board.querySelectorAll('.tile')].forEach(t=>t.remove());
+
+  TILES.forEach(tile=>{
+    const el = document.createElement('div');
+    el.className = `tile ${tile.side||''}`;
+    el.id = `tile-${tile.id}`;
+    el.style.gridRow = tile.gridRow;
+    el.style.gridColumn = tile.gridCol;
+    el.onclick = ()=>showTileInfo(tile.id);
+
+    const side = tile.side||'';
+
+    if(tile.type==='property'){
+      el.classList.add('prop-tile');
+      el.style.background = COLOR_BG[tile.color]||'#111';
+      const icon = GROUP_ICONS[tile.color]||'🏠';
+      const hex  = COLOR_HEX[tile.color]||'#555';
+      // Color band with icon (faces board center based on side)
+      const band = document.createElement('div');
+      band.className = 'color-band';
+      band.style.background = `linear-gradient(135deg, ${hex}dd, ${hex})`;
+      band.innerHTML = `<span class="band-icon">${icon}</span>`;
+      el.appendChild(band);
+      // Body
+      const body = document.createElement('div');
+      body.className = 'tile-body';
+      body.innerHTML = `<div class="tile-name">${tile.name}</div><div class="tile-price">${tile.price}g</div>`;
+      el.appendChild(body);
+      // 5 building pip slots
+      const pips = document.createElement('div');
+      pips.className = 'build-pips';
+      pips.id = `pips-${tile.id}`;
+      for(let i=0;i<5;i++) pips.innerHTML+=`<div class="build-pip" id="pip-${tile.id}-${i}"></div>`;
+      el.appendChild(pips);
+
+    } else if(tile.type==='railroad'){
+      el.classList.add('railroad-tile');
+      const icon = RAILROAD_ICONS[tile.id]||'🚂';
+      el.innerHTML=`<span class="special-icon">${icon}</span><div class="special-label">${shortName(tile.name)}</div><div class="tile-price" style="font-size:0.38rem;">200g</div>`;
+
+    } else if(tile.type==='utility'){
+      el.classList.add('utility-tile');
+      const icon = tile.utilityType==='guild'?'🔮':'⚗';
+      el.innerHTML=`<span class="special-icon">${icon}</span><div class="special-label">${shortName(tile.name)}</div>`;
+
+    } else if(tile.type==='chance'){
+      el.classList.add('chance-tile');
+      el.innerHTML=`<span class="special-icon">🌀</span><div class="special-label">Fate's Whisper</div>`;
+
+    } else if(tile.type==='community'){
+      el.classList.add('community-tile');
+      el.innerHTML=`<span class="special-icon">💰</span><div class="special-label">Treasure Trove</div>`;
+
+    } else if(tile.type==='tax'){
+      el.classList.add('tax-tile');
+      const icon = tile.taxAmount>=200?'👑':'💎';
+      el.innerHTML=`<span class="special-icon">${icon}</span><div class="special-label">${shortName(tile.name)}</div>`;
+
+    } else if(tile.type==='go'){
+      el.classList.add('corner');
+      el.innerHTML=`<div class="corner-inner"><span class="corner-icon">🏕</span><div class="corner-title">Adventurer's Rest</div><div class="corner-sub">Collect 200g</div></div>`;
+
+    } else if(tile.type==='jail'){
+      el.classList.add('corner');
+      el.style.background='#10140a';
+      el.innerHTML=`<div class="corner-inner" style="justify-content:space-between;padding:8px;">
+        <div style="font-size:0.42rem;color:var(--dim);font-family:'Cinzel',serif;letter-spacing:1px;">JUST VISITING</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span style="font-size:1.6rem;">⛓</span>
+          <div class="corner-title">Guard's Quarters</div>
+        </div>
+        <div style="font-size:0.42rem;color:#ff8888;font-family:'Cinzel',serif;letter-spacing:1px;">DUNGEON KEEP</div>
+      </div>`;
+
+    } else if(tile.type==='free_parking'){
+      el.classList.add('corner');
+      el.innerHTML=`<div class="corner-inner"><span class="corner-icon">⛺</span><div class="corner-title">Safe Haven</div><div class="corner-sub" id="parking-pot-label">Collect the pot!</div></div>`;
+
+    } else if(tile.type==='go_to_jail'){
+      el.classList.add('corner');
+      el.style.background='#1a0808';
+      el.innerHTML=`<div class="corner-inner"><span class="corner-icon">⚖</span><div class="corner-title" style="color:#ff8888;">Fate's Judgement</div><div class="corner-sub">Go to Dungeon!</div></div>`;
+    }
+
+    board.appendChild(el);
+  });
+}
+
+function shortName(name){
+  // Shorten long tile names to fit small tiles
+  return name.replace('Caravan Crossing','Crossing').replace('Adventurer\'s','Adv.');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOKENS
+// ═══════════════════════════════════════════════════════════
+function _tokenOffset(slotIdx){
+  // Arrange up to 6 tokens in a 2x3 grid within a tile
+  const row = Math.floor(slotIdx/2);
+  const col = slotIdx%2;
+  return { dx: 3 + col*14, dy: 3 + row*14 };
+}
+
+function renderTokens(){
+  const layer = document.getElementById('token-layer');
+  layer.innerHTML='';
+  const wrapRect = document.querySelector('.board-wrap').getBoundingClientRect();
+  // Group players by tile position to handle stacking
+  const posMap = {};
+  G.players.forEach((p,i)=>{ if(!p.bankrupt){ if(!posMap[p.pos]) posMap[p.pos]=[]; posMap[p.pos].push(i); } });
+
+  G.players.forEach((p,i)=>{
+    if(p.bankrupt) return;
+    const tileEl = document.getElementById(`tile-${p.pos}`);
+    if(!tileEl) return;
+    const tr = tileEl.getBoundingClientRect();
+    const slotIdx = posMap[p.pos].indexOf(i);
+    const {dx,dy} = _tokenOffset(slotIdx);
+    const token = document.createElement('div');
+    token.id = `token-${i}`;
+    token.className = 'token' + (i===G.currentIdx?' active-token':'');
+    token.style.background = p.color;
+    token.style.color = '#fff';
+    token.style.left = (tr.left - wrapRect.left + dx) + 'px';
+    token.style.top  = (tr.top  - wrapRect.top  + dy) + 'px';
+    token.textContent = p.name.charAt(0).toUpperCase();
+    token.title = p.name;
+    layer.appendChild(token);
+  });
+}
+
+function moveToken(playerIdx, newPos){
+  const wrapRect = document.querySelector('.board-wrap').getBoundingClientRect();
+  const tileEl = document.getElementById(`tile-${newPos}`);
+  const token  = document.getElementById(`token-${playerIdx}`);
+  if(!tileEl||!token) return;
+  const tr = tileEl.getBoundingClientRect();
+  // Count how many non-bankrupt players are on this tile (including this one)
+  const playersOnTile = G.players.filter(p=>!p.bankrupt&&p.pos===newPos);
+  const slotIdx = playersOnTile.findIndex(p=>p.idx===playerIdx);
+  const {dx,dy} = _tokenOffset(Math.max(0,slotIdx));
+  token.style.left = (tr.left - wrapRect.left + dx) + 'px';
+  token.style.top  = (tr.top  - wrapRect.top  + dy) + 'px';
+}
+
+// ═══════════════════════════════════════════════════════════
+// PLAYER CARDS (sidebar)
+// ═══════════════════════════════════════════════════════════
+function renderPlayerCards(){
+  const c = document.getElementById('player-cards');
+  c.innerHTML = '';
+  G.players.forEach((p,i)=>{
+    if(p.bankrupt) return;
+    const owned = Object.entries(G.tileOwners).filter(([,oi])=>oi===i);
+    const propDots = owned.map(([tid])=>{
+      const tile = TILES[+tid];
+      if(!tile) return '';
+      const col = tile.color ? COLOR_HEX[tile.color] : (tile.type==='railroad'?'#555':'#338');
+      return `<div class="prop-dot" style="background:${col}" title="${tile.name}"></div>`;
+    }).join('');
+
+    const gearTag  = p.gear ? `<span class="tag gear-tag">⚔ ${p.gear.short}</span>` : '';
+    const potTags  = p.potions.map(pot=>`<span class="tag potion-tag">🧪 ${pot.name.split(' ')[0]}</span>`).join('');
+    const jailTag  = p.inJail ? `<span class="tag jail-tag">⛓ Jailed (${p.jailTurns}/3)</span>` : '';
+
+    c.innerHTML += `
+    <div class="player-card" id="pcard-${i}" style="background:${p.color}22;border-color:${p.color}55;cursor:pointer;" onclick="showPlayerInfo(${i})" title="Click to see ${p.name}'s holdings">
+      <div class="player-card-header">
+        <div class="player-token-icon" style="background:${p.color}"></div>
+        <div class="player-name-label" style="color:${p.color}">${p.name}</div>
+        <div style="margin-left:auto;font-size:0.7rem;color:var(--dim);">👁 holdings</div>
+      </div>
+      <div class="player-gold">${p.gold}g <span>gold</span></div>
+      <div class="player-tags">${gearTag}${potTags}${jailTag}</div>
+      ${owned.length?`<div class="prop-list">${propDots}</div>`:''}
+    </div>`;
+  });
+
+  // highlight active
+  document.querySelectorAll('.player-card').forEach(c=>c.classList.remove('active-turn'));
+  const activePcard = document.getElementById(`pcard-${G.currentIdx}`);
+  if(activePcard) activePcard.classList.add('active-turn');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TURN MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+function startTurn(){
+  const p = cur();
+  if(p.skipTurns>0){
+    p.skipTurns--;
+    log(`${p.name} is skipping a turn.`,'danger');
+    endTurn();
+    return;
+  }
+  if(p.curse>0){
+    p.curse--;
+    deductGold(p, p.curseAmount, 'curse damage');
+  }
+  document.getElementById('turn-banner').textContent = `${p.name}'s Turn`;
+  document.getElementById('roll-btn').disabled = false;
+  document.getElementById('roll-btn').style.display = '';
+  const jailBtn = document.getElementById('jail-pay-btn');
+  jailBtn.style.display = p.inJail ? '' : 'none';
+  G.turnPhase = 'roll';
+  refreshBuildPanel();
+}
+
+function cur(){ return G.players[G.currentIdx]; }
+
+async function rollDice(){
+  const p = cur();
+  document.getElementById('roll-btn').disabled=true;
+
+  // Animate dice + sound
+  sfxDiceRoll();
+  const d1el=document.getElementById('die1'), d2el=document.getElementById('die2');
+  d1el.classList.add('rolling'); d2el.classList.add('rolling');
+  await sleep(650);
+  d1el.classList.remove('rolling'); d2el.classList.remove('rolling');
+
+  let d1=randInt(1,6), d2=randInt(1,6);
+  // Boot of the Swift Wind: roll 3 keep best 2
+  if(p.gear?.effect==='move_bonus'){
+    const d3=randInt(1,6);
+    const three=[d1,d2,d3].sort((a,b)=>b-a);
+    d1=three[0]; d2=three[1];
+    log(`${p.name}'s boots grant a bonus die!`);
+  }
+  const doubles = d1===d2;
+  const total = d1+d2;
+
+  d1el.textContent = DICE_FACES[d1-1];
+  d2el.textContent = DICE_FACES[d2-1];
+
+  log(`${p.name} rolls ${d1}+${d2}=${total}${doubles?' 🎲 DOUBLES!':''}`);
+
+  if(p.inJail){
+    if(doubles){
+      p.inJail=false; p.jailTurns=0;
+      log(`${p.name} rolled doubles and escapes the Dungeon Keep!`,'success');
+      await movePlayerBy(p, total);
+    } else {
+      p.jailTurns++;
+      if(p.jailTurns>=3){
+        p.inJail=false; p.jailTurns=0;
+        deductGold(p,50,'jail fine');
+        log(`${p.name} paid 50g to escape after 3 turns.`,'danger');
+        await movePlayerBy(p,total);
+      } else {
+        log(`${p.name} remains jailed. (${p.jailTurns}/3 turns)`,'danger');
+        endTurn();
+        return;
+      }
+    }
+  } else {
+    if(doubles){
+      G.doublesCount++;
+      if(G.doublesCount>=3){
+        log(`${p.name} rolled doubles 3 times — sent to the Dungeon!`,'danger');
+        sendToJail(p);
+        endTurn();
+        return;
+      }
+      G.doublesPending=true; // will roll again AFTER tile actions resolve
+    } else {
+      G.doublesCount=0;
+      G.doublesPending=false;
+    }
+    await movePlayerBy(p, total);
+  }
+  renderPlayerCards();
+  renderTokens();
+}
+
+async function movePlayerBy(p, spaces){
+  const oldPos = p.pos;
+  const newPos = (p.pos + spaces) % 40;
+  // Check pass Go
+  if(newPos < oldPos && !p.inJail){
+    p.gold += 200;
+    log(`${p.name} passes Adventurer's Rest — collect 200g!`,'success');
+  }
+  p.pos = newPos;
+  moveToken(p.idx, newPos);
+  await sleep(500);
+  await landOnTile(p, TILES[newPos]);
+}
+
+// ═══════════════════════════════════════════════════════════
+// LANDING ON TILES
+// ═══════════════════════════════════════════════════════════
+async function landOnTile(p, tile){
+  log(`${p.name} lands on ${tile.name}`);
+  renderPlayerCards();
+
+  if(tile.type==='go'){
+    // already collected 200 passing; if you land exactly, collect again
+    p.gold += 200;
+    log(`${p.name} lands exactly on Adventurer's Rest — bonus 200g!`,'success');
+    endTurn();
+
+  } else if(tile.type==='go_to_jail'){
+    showEvent(tile, p, ()=>{
+      sendToJail(p);
+      endTurn();
+    });
+
+  } else if(tile.type==='jail'){
+    log(`${p.name} is just visiting the Guard's Quarters.`);
+    endTurn();
+
+  } else if(tile.type==='free_parking'){
+    const pot = G.freeParking;
+    G.freeParking = 0;
+    p.gold += pot;
+    if(pot>0) log(`${p.name} collects the Safe Haven pot: ${pot}g!`,'success');
+    else log(`${p.name} rests at Safe Haven — no pot this time.`);
+    endTurn();
+
+  } else if(tile.type==='chance'){
+    drawFatesWhisper(p);
+
+  } else if(tile.type==='community'){
+    drawTreasureTrove(p);
+
+  } else if(tile.type==='tax'){
+    showEvent(tile, p, ()=>endTurn());
+
+  } else if(tile.type==='property'||tile.type==='railroad'||tile.type==='utility'){
+    const ownedBy = G.tileOwners[tile.id];
+    if(ownedBy===undefined){
+      // Unowned — trigger event
+      showEvent(tile, p, ()=>endTurn());
+    } else if(ownedBy===p.idx){
+      log(`${p.name} visits their own ${tile.name}.`);
+      endTurn();
+    } else {
+      // Pay rent
+      const owner = G.players[ownedBy];
+      // Skip if mortgaged
+      if(G.mortgaged[tile.id]){
+        log(`${tile.name} is mortgaged — no rent owed.`);
+        endTurn(); return;
+      }
+      const rentAmt = calcRent(tile, ownedBy);
+      // Cloak of Shadows: skip rent once
+      if(p.gear?.effect==='skip_rent' && p.gear.cloakUsed!==true){
+        p.gear.cloakUsed=true;
+        showRentToast(p, owner, rentAmt, true);
+        log(`${p.name}'s Cloak of Shadows negates the rent!`,'success');
+        await sleep(1800);
+        endTurn(); return;
+      }
+      // Brew of Protection: halve rent once
+      const brewIdx = p.potions.findIndex(pot=>pot.effect==='negate_rent');
+      let rent = rentAmt;
+      if(brewIdx>=0){
+        rent = Math.floor(rentAmt/2);
+        p.potions.splice(brewIdx,1);
+        log(`${p.name}'s Brew of Protection halves rent to ${rent}g!`,'success');
+      }
+      if(p.gear?.effect==='defense') rent = Math.floor(rent*0.9);
+      showRentToast(p, owner, rent, false);
+      log(`${p.name} pays ${rent}g rent to ${owner.name} for ${tile.name}!`,'danger');
+      deductGold(p, rent, `rent to ${owner.name}`);
+      owner.gold += rent;
+      renderPlayerCards();
+      checkBankruptcy(p);
+      await sleep(2000);
+      endTurn();
+    }
+  }
+}
+
+function calcRent(tile, ownerIdx){
+  if(tile.type==='railroad'){
+    const rrCount = TILES.filter(t=>t.type==='railroad'&&G.tileOwners[t.id]===ownerIdx).length;
+    return [0,25,50,100,200][rrCount];
+  }
+  if(tile.type==='utility'){
+    const utilCount = TILES.filter(t=>t.type==='utility'&&G.tileOwners[t.id]===ownerIdx).length;
+    const roll = randInt(1,6)+randInt(1,6);
+    return roll * (utilCount===2?10:4);
+  }
+  // Property — check buildings first
+  const builds = G.buildings[tile.id]||0;
+  if(builds > 0) return tile.rent[Math.min(builds, tile.rent.length-1)];
+  const groupOwned = COLOR_GROUPS[tile.color]?.every(id=>G.tileOwners[id]===ownerIdx);
+  return groupOwned ? tile.rent[0]*2 : tile.rent[0];
+}
+
+// ═══════════════════════════════════════════════════════════
+// EVENT MODAL
+// ═══════════════════════════════════════════════════════════
+function showEvent(tile, player, onDone){
+  const ev = tile.event;
+  if(!ev){ onDone(); return; }
+
+  document.getElementById('event-title').textContent = ev.title;
+  document.getElementById('event-subtitle').textContent = tile.name + (tile.price?` — ${G.tilePrices[tile.id]||tile.price}g`:'');
+  document.getElementById('event-story').textContent = ev.story;
+  document.getElementById('event-result-area').innerHTML='';
+  document.getElementById('purchase-bar').style.display='none';
+  document.getElementById('event-modal').classList.remove('hidden');
+
+  const choicesEl = document.getElementById('event-choices');
+  choicesEl.innerHTML='';
+
+  if(tile.type==='tax'){
+    const taxAmt = Math.min(tile.taxAmount, Math.floor(player.gold*0.1));
+    buildChoice({text:`Pay tribute (${taxAmt}g)`,type:'tax_pay'}, tile, player, taxAmt, onDone, choicesEl);
+    // Add bribe if event has it
+    if(ev.choices&&ev.choices.length>1){
+      buildChoice(ev.choices[1], tile, player, taxAmt, onDone, choicesEl);
+    }
+    return;
+  }
+  if(tile.type==='go_to_jail'){
+    buildChoice({text:'Accept fate',type:'goto_jail'}, tile, player, 0, onDone, choicesEl);
+    return;
+  }
+
+  ev.choices.forEach(ch=>buildChoice(ch, tile, player, 0, onDone, choicesEl));
+}
+
+function buildChoice(ch, tile, player, taxContext, onDone, container){
+  const btn = document.createElement('button');
+  btn.className='choice-btn';
+  let label = ch.text;
+  btn.innerHTML=`${label}`;
+  if(ch.cost) btn.innerHTML+=`<span class="choice-cost">Cost: ${ch.cost}g</span>`;
+  if(ch.dc)   btn.innerHTML+=`<span class="choice-risk">Combat/Skill DC ${ch.dc} (roll d20)</span>`;
+  btn.onclick=()=>resolveChoice(ch, tile, player, taxContext, onDone);
+  container.appendChild(btn);
+}
+
+async function resolveChoice(ch, tile, player, taxContext, onDone){
+  document.getElementById('event-choices').innerHTML='';
+  const resultArea = document.getElementById('event-result-area');
+
+  if(ch.type==='close'){
+    closeEventModal(); onDone(); return;
+  }
+  if(ch.type==='goto_jail'){
+    closeEventModal(); sendToJail(player); onDone(); return;
+  }
+  if(ch.type==='tax_pay'){
+    deductGold(player, taxContext, 'tax');
+    G.freeParking += taxContext;
+    showResult(resultArea,'neutral',`You pay ${taxContext}g. The herald bows and departs.`);
+    await sleep(1800); closeEventModal(); onDone(); return;
+  }
+  if(ch.type==='buy'||ch.type==='buy_fixed'){
+    const price = ch.fixedPrice || G.tilePrices[tile.id] || tile.price;
+    if(player.gold<price){
+      showResult(resultArea,'failure',`You cannot afford ${price}g.`);
+      await sleep(1500); closeEventModal(); onDone(); return;
+    }
+    showPurchaseBar(tile, player, price, onDone, resultArea);
+    return;
+  }
+  if(ch.type==='pay_then_buy'){
+    if(player.gold<ch.cost){
+      showResult(resultArea,'failure',`You cannot afford the ${ch.cost}g upfront cost.`);
+      await sleep(1500); closeEventModal(); onDone(); return;
+    }
+    deductGold(player,ch.cost,`upfront fee`);
+    const price = G.tilePrices[tile.id]||tile.price;
+    if(player.gold<price){
+      showResult(resultArea,'failure',`After paying ${ch.cost}g, you can't afford ${price}g.`);
+      await sleep(1500); closeEventModal(); onDone(); return;
+    }
+    showPurchaseBar(tile, player, price, onDone, resultArea);
+    return;
+  }
+  if(ch.type==='gain_gold'){
+    player.gold += ch.gainValue||0;
+    log(`${player.name} gains ${ch.gainValue}g!`,'success');
+    showResult(resultArea,'success',`You gain ${ch.gainValue}g!`);
+    renderPlayerCards();
+    await sleep(1800); closeEventModal(); onDone(); return;
+  }
+  if(ch.type==='open_gear_shop'||ch.type==='buy_then_shop'){
+    if(ch.type==='buy_then_shop'){
+      if(player.gold<150){showResult(resultArea,'failure','Not enough gold for membership.'); await sleep(1500); closeEventModal(); onDone(); return;}
+      deductGold(player,150,'guild membership');
+      G.tileOwners[tile.id]=player.idx;
+      updateTileDisplay(tile.id, player);
+      log(`${player.name} joins the Mage's Guild!`,'success');
+    }
+    closeEventModal();
+    openGearShop(player, onDone);
+    return;
+  }
+  if(ch.type==='open_potion_shop'){
+    closeEventModal();
+    openPotionShop(player, onDone);
+    return;
+  }
+
+  // Combat/Skill check
+  if(ch.type==='combat'||ch.type==='dm_secret'){
+    const bonus = player.gear?.effect==='combat_bonus'?3:(player.gear?.effect==='double_attack'?2:0);
+    const result = await rollEventD20(ch.dc, bonus);
+    if(result.success){
+      // Critical 20: upgrade the reward
+      let msg = result.isCritSuccess
+        ? `⚔ CRITICAL HIT! ` + (ch.critMsg || ch.successMsg||'You exceed all expectations!')
+        : (ch.successMsg||'Success!');
+      resultArea.innerHTML += `<div class="modal-result success" style="margin-top:8px;white-space:pre-wrap;">${msg}</div>`;
+      await handleChoiceSuccess(ch, tile, player, onDone, resultArea, result.isCritSuccess);
+    } else {
+      // Critical 1: downgrade — lose more gold
+      let msg = result.isCritFail
+        ? `💀 CATASTROPHIC FAILURE! ` + (ch.critFailMsg || ch.failMsg||'A disaster of legendary proportions.')
+        : (ch.failMsg||'Failure!');
+      resultArea.innerHTML += `<div class="modal-result failure" style="margin-top:8px;white-space:pre-wrap;">${msg}</div>`;
+      await handleChoiceFailure(ch, tile, player, onDone, resultArea, result.isCritFail);
+    }
+    renderPlayerCards();
+    await sleep(2200); closeEventModal(); onDone();
+    return;
+  }
+  if(ch.type==='gamble_invest'){
+    const investAmt = ch.investAmount||200;
+    if(player.gold<investAmt){showResult(resultArea,'failure',`You need ${investAmt}g to invest.`); await sleep(1500); closeEventModal(); onDone(); return;}
+    const dc=10; const bonus=0;
+    const result=await rollEventD20(dc, bonus);
+    if(result.success){
+      player.gold += investAmt; // get back double (net +invest)
+      showResult(resultArea,'success',`🎲 Rolled ${result.roll} — the merchant is legitimate! Your ${investAmt}g becomes ${investAmt*2}g!`);
+    } else {
+      deductGold(player, investAmt, 'swindled investment');
+      showResult(resultArea,'failure',`🎲 Rolled ${result.roll} — you were swindled! Lost ${investAmt}g.`);
+    }
+    renderPlayerCards();
+    await sleep(2200);
+    // Still offer purchase
+    const price = G.tilePrices[tile.id]||tile.price;
+    if(player.gold>=price) showPurchaseBar(tile, player, price, onDone, resultArea);
+    else { closeEventModal(); onDone(); }
+    return;
+  }
+  if(ch.type==='half_tax'){
+    const half=Math.floor(taxContext/2);
+    deductGold(player,half,'bribe');
+    G.freeParking+=half;
+    showResult(resultArea,'success',`You pay only ${half}g. The official pockets your bribe.`);
+    await sleep(1800); closeEventModal(); onDone(); return;
+  }
+  if(ch.type==='double_tax'){
+    const dbl=taxContext*2;
+    deductGold(player,dbl,'double tax fine');
+    G.freeParking+=dbl;
+    showResult(resultArea,'failure',`You pay ${dbl}g in fines!`);
+    await sleep(1800); closeEventModal(); onDone(); return;
+  }
+
+  // fallback
+  closeEventModal(); onDone();
+}
+
+async function handleChoiceSuccess(ch, tile, player, onDone, resultArea, isCrit=false){
+  const eff = ch.successEffect;
+  // On critical success: buy_discount → buy_free, buy_fixed → buy_free, buy_free → buy_free + bonus gold
+  const effectivEff = isCrit
+    ? (eff==='buy_discount'||eff==='buy_fixed'?'buy_free':'buy_free_bonus')
+    : eff;
+  const critBonus = isCrit ? Math.floor((G.tilePrices[tile.id]||tile.price)*0.25) : 0;
+
+  if(effectivEff==='buy'||eff==='buy_fixed'){
+    const price=ch.fixedPrice||G.tilePrices[tile.id]||tile.price;
+    if(player.gold>=price){ deductGold(player,price,'property'); G.tileOwners[tile.id]=player.idx; updateTileDisplay(tile.id,player); log(`${player.name} acquires ${tile.name}!`,'success'); }
+    else showPurchaseBar(tile,player,price,onDone,resultArea);
+  } else if(eff==='buy_discount'&&!isCrit){
+    const price=ch.discountPrice||Math.floor((G.tilePrices[tile.id]||tile.price)/2);
+    if(player.gold>=price){ deductGold(player,price,'property'); G.tileOwners[tile.id]=player.idx; updateTileDisplay(tile.id,player); log(`${player.name} acquires ${tile.name} at ${price}g!`,'success'); }
+    else showPurchaseBar(tile,player,price,onDone,resultArea);
+  } else if(effectivEff==='buy_free'||effectivEff==='buy_free_bonus'||eff==='buy_free'||eff==='buy_free_bonus'){
+    G.tileOwners[tile.id]=player.idx; updateTileDisplay(tile.id,player);
+    const bonus=(eff==='buy_free_bonus'&&ch.bonusGold?ch.bonusGold:0)+critBonus;
+    log(`${player.name} acquires ${tile.name} for FREE!${isCrit?' (CRITICAL BONUS!)':''}`, 'success');
+    if(bonus){ player.gold+=bonus; log(`${player.name} gains ${bonus}g bonus!`,'success'); }
+  } else if(eff==='raise_price'){
+    // success on druid quest = discount; already described in successMsg
+  }
+}
+
+async function handleChoiceFailure(ch, tile, player, onDone, resultArea, isCrit=false){
+  const eff=ch.failEffect;
+  // On critical fail: lose 50% more gold + always skip turn
+  const multi = isCrit ? 1.5 : 1;
+  if(eff==='lose_gold'&&ch.failValue){ deductGold(player,Math.floor(ch.failValue*multi),'event penalty'); if(isCrit){player.skipTurns++;log(`${player.name} loses their next turn!`,'danger');} }
+  if(eff==='lose_gold_skip'&&ch.failValue){ deductGold(player,Math.floor(ch.failValue*multi),'event penalty'); player.skipTurns+=(isCrit?2:1); }
+  if(eff==='lose_gold_block'&&ch.failValue){ deductGold(player,Math.floor(ch.failValue*multi),'event penalty'); }
+  if(eff==='block_purchase'){ if(isCrit){ deductGold(player,50,'critical fumble fee'); } }
+  if(eff==='buy'){
+    const price=G.tilePrices[tile.id]||tile.price;
+    const penalty=isCrit?Math.floor(price*0.1):0;
+    if(penalty) deductGold(player,penalty,'critical fumble surcharge');
+    if(player.gold>=price){ deductGold(player,price,'property'); G.tileOwners[tile.id]=player.idx; updateTileDisplay(tile.id,player); }
+  }
+  if(eff==='raise_price'&&ch.failValue){ G.tilePrices[tile.id]=(G.tilePrices[tile.id]||tile.price)+Math.floor(ch.failValue*multi); }
+  if(eff==='double_tax'){ deductGold(player,Math.floor((tile.taxAmount||100)*2*multi),'double tax'); }
+  checkBankruptcy(player);
+}
+
+function showPurchaseBar(tile, player, price, onDone, resultArea){
+  const bar = document.getElementById('purchase-bar');
+  bar.style.display='flex';
+  bar.innerHTML=`
+    <button class="btn btn-gold" onclick="doPurchase(${tile.id},${player.idx},${price})">Buy ${tile.name} (${price}g)</button>
+    <button class="btn btn-outline" onclick="closeEventModal_done()">Pass</button>`;
+  // Store callback
+  window._eventOnDone=onDone;
+}
+
+function doPurchase(tileId, playerIdx, price){
+  const player=G.players[playerIdx];
+  const tile=TILES[tileId];
+  if(player.gold<price){alert('Not enough gold!'); return;}
+  deductGold(player,price,'property');
+  G.tileOwners[tileId]=playerIdx;
+  updateTileDisplay(tileId,player);
+  log(`${player.name} purchases ${tile.name} for ${price}g!`,'success');
+  renderPlayerCards();
+  closeEventModal();
+  if(window._eventOnDone) window._eventOnDone();
+}
+
+function closeEventModal_done(){
+  closeEventModal();
+  if(window._eventOnDone) window._eventOnDone();
+}
+
+function closeEventModal(){
+  document.getElementById('event-modal').classList.add('hidden');
+  document.getElementById('event-choices').innerHTML='';
+  document.getElementById('event-result-area').innerHTML='';
+  document.getElementById('purchase-bar').style.display='none';
+}
+
+function showResult(area, type, msg){
+  area.innerHTML=`<div class="modal-result ${type}">${msg.replace(/\n/g,'<br>')}</div>`;
+}
+
+async function rollEventD20(dc, bonus=0){
+  const resultArea=document.getElementById('event-result-area');
+  resultArea.innerHTML=`<div class="dice-display rolling-anim" style="font-size:2.5rem;text-align:center;">🎲</div>`;
+  sfxDiceRoll();
+  await sleep(700);
+  const rawRoll=randInt(1,20);
+  const isCritSuccess = rawRoll===20;
+  const isCritFail    = rawRoll===1;
+  const total = rawRoll+bonus;
+  const success = isCritSuccess || (!isCritFail && total>=dc);
+
+  // Visual feedback
+  let rollColor = success ? '#88ff88' : '#ff6666';
+  let label = success ? (isCritSuccess?'⚔ CRITICAL HIT!':'✅ Success') : (isCritFail?'💀 CRITICAL FAIL!':'❌ Failure');
+  let rollStyle = isCritSuccess ? 'color:#ffd700;text-shadow:0 0 20px #ffd700;font-size:3rem;'
+                : isCritFail   ? 'color:#ff3333;text-shadow:0 0 20px #ff3333;font-size:3rem;'
+                : `color:${rollColor};`;
+
+  resultArea.innerHTML=`
+    <div style="${rollStyle}text-align:center;font-weight:bold;font-family:'Cinzel',serif;font-size:2.2rem;">${rawRoll}</div>
+    <div style="text-align:center;font-size:0.85rem;color:var(--dim);margin:4px 0;">
+      Rolled ${rawRoll}${bonus?`+${bonus}=<b style="color:var(--text)">${total}</b>`:''} vs DC ${dc}
+    </div>
+    <div style="text-align:center;font-family:'Cinzel',serif;font-size:1rem;color:${rollColor};letter-spacing:2px;margin-top:4px;">${label}</div>`;
+
+  if(isCritSuccess) sfxCritSuccess();
+  else if(isCritFail) sfxCritFail();
+  else if(success) sfxSuccess();
+  else sfxFailure();
+
+  await sleep(700);
+  return {roll:total, rawRoll, isCritSuccess, isCritFail, success};
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARD DECKS
+// ═══════════════════════════════════════════════════════════
+function drawFatesWhisper(player){
+  if(G.deckFates.length===0) G.deckFates=shuffle([...FATES_WHISPER]);
+  const card=G.deckFates.pop();
+  applyCardEffect(card, player, 'Fate\'s Whisper', ()=>endTurn());
+}
+
+function drawTreasureTrove(player){
+  if(G.deckTreasure.length===0) G.deckTreasure=shuffle([...TREASURE_TROVE]);
+  const card=G.deckTreasure.pop();
+  applyCardEffect(card, player, 'Treasure Trove', ()=>endTurn());
+}
+
+function applyCardEffect(card, player, deckName, onDone){
+  document.getElementById('card-title').textContent=card.title;
+  document.getElementById('card-type-label').textContent=deckName;
+  document.getElementById('card-story').textContent=card.story;
+  const resultEl=document.getElementById('card-result');
+  resultEl.style.display='none';
+  document.getElementById('card-modal').classList.remove('hidden');
+  window._cardOnDone=onDone;
+
+  let resultMsg='';
+  if(card.effect==='gain_gold'){
+    let amt=card.value;
+    if(card.cost){ deductGold(player,card.cost,'wishing well'); }
+    player.gold+=amt; resultMsg=`You gain ${amt}g!`;
+    log(`${player.name}: ${card.title} — +${amt}g`,'success');
+  } else if(card.effect==='lose_gold'){
+    const amt=Math.abs(card.value);
+    deductGold(player,amt,card.title);
+    resultMsg=`You lose ${amt}g.`;
+  } else if(card.effect==='all_lose'){
+    const amt=Math.abs(card.value);
+    G.players.forEach(p=>{ if(!p.bankrupt){ deductGold(p,amt,card.title); } });
+    resultMsg=`All players lose ${amt}g!`;
+  } else if(card.effect==='move'){
+    const spaces=card.value;
+    resultMsg=`You move ${Math.abs(spaces)} spaces ${spaces>0?'forward':'back'}!`;
+    closeCardModal_then(async ()=>{
+      await movePlayerBy(player,((spaces%40)+40)%40);
+      renderPlayerCards(); renderTokens(); onDone();
+    });
+    return;
+  } else if(card.effect==='advance_go'){
+    const toGo=40-player.pos;
+    player.gold+=200;
+    resultMsg=`Advance to Go! Collect 200g.`;
+    closeCardModal_then(async ()=>{
+      await movePlayerBy(player,toGo);
+      renderPlayerCards(); renderTokens(); onDone();
+    });
+    return;
+  } else if(card.effect==='gamble'){
+    const roll=randInt(1,6);
+    if(roll>=4){ player.gold+=150; resultMsg=`Rolled ${roll} — gained 150g!`; }
+    else { deductGold(player,100,'gamble'); resultMsg=`Rolled ${roll} — lost 100g.`; }
+  } else if(card.effect==='curse_self'){
+    player.gold+=100; player.curse=3; player.curseAmount=25;
+    resultMsg=`You gain 100g but are cursed — lose 25g per turn for 3 turns.`;
+  } else if(card.effect==='give_potion'){
+    if(player.potions.length<2){
+      const pot=POTIONS[randInt(0,POTIONS.length-1)];
+      player.potions.push(pot);
+      resultMsg=`You receive: ${pot.name}! (${pot.desc})`;
+    } else {
+      resultMsg=`Your pouch is full — you can't carry more potions.`;
+    }
+  }
+
+  if(resultMsg){
+    resultEl.textContent=resultMsg;
+    resultEl.style.display='block';
+  }
+  renderPlayerCards();
+  checkBankruptcy(player);
+}
+
+function closeCardModal(){
+  document.getElementById('card-modal').classList.add('hidden');
+  if(window._cardOnDone) window._cardOnDone();
+}
+function closeCardModal_then(fn){
+  document.getElementById('card-modal').classList.add('hidden');
+  fn();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SHOPS
+// ═══════════════════════════════════════════════════════════
+function openGearShop(player, onDone){
+  const items = GEAR_ITEMS.map(g=>{
+    const owned = player.gear?.id===g.id;
+    const canAfford = player.gold>=g.price;
+    const hasGear = player.gear && !owned;
+    return `
+    <div class="shop-item ${!canAfford?'cant-afford':''} ${owned?'already-owned':''}"
+         onclick="${canAfford&&!owned&&!hasGear?`buyGear('${g.id}')`:''}" title="${hasGear?'Already carrying gear — sell your current item first':''}">
+      <div class="shop-item-name">${g.name}</div>
+      <div class="shop-item-price">${g.price}g · ${g.tag}</div>
+      <div class="shop-item-effect">${g.desc}</div>
+      ${owned?'<div style="color:#88ff88;font-size:0.7rem;margin-top:4px;">✓ Equipped</div>':''}
+      ${hasGear?'<div style="color:#ff8888;font-size:0.7rem;margin-top:4px;">⚠ Already have gear</div>':''}
+    </div>`;
+  }).join('');
+  document.getElementById('event-title').textContent="Mage's Guild — Equipment";
+  document.getElementById('event-subtitle').textContent='Choose one piece of enchanted gear';
+  document.getElementById('event-story').innerHTML='';
+  document.getElementById('event-result-area').innerHTML='';
+  document.getElementById('event-choices').innerHTML=`<div class="shop-grid">${items}</div><div style="margin-top:12px;text-align:center;"><button class="btn btn-outline" onclick="closeEventModal_done()">Leave Shop</button></div>`;
+  document.getElementById('event-modal').classList.remove('hidden');
+  window._eventOnDone=onDone;
+  window._shopPlayer=player;
+}
+
+function buyGear(gearId){
+  const player=window._shopPlayer||cur();
+  const gear=GEAR_ITEMS.find(g=>g.id===gearId);
+  if(!gear||player.gold<gear.price) return;
+  deductGold(player,gear.price,'gear purchase');
+  player.gear=gear;
+  log(`${player.name} equips ${gear.name}!`,'success');
+  renderPlayerCards();
+  closeEventModal();
+  if(window._eventOnDone) window._eventOnDone();
+}
+
+function openPotionShop(player, onDone){
+  const potList = POTIONS.slice(0,6).map((pot,i)=>{
+    const canAfford=player.gold>=200;
+    const full=player.potions.length>=2;
+    return `
+    <div class="shop-item ${!canAfford||full?'cant-afford':''}"
+         onclick="${canAfford&&!full?`buyPotion(${i})`:''}" >
+      <div class="shop-item-name">${pot.name}</div>
+      <div class="shop-item-price">200g · 🧪 Mystery</div>
+      <div class="shop-item-effect">Effect unknown until consumed</div>
+    </div>`;
+  }).join('');
+  document.getElementById('event-title').textContent='Potion Shop';
+  document.getElementById('event-subtitle').textContent='All potions 200g · Max 2 carried';
+  document.getElementById('event-story').innerHTML='';
+  document.getElementById('event-result-area').innerHTML='';
+  document.getElementById('event-choices').innerHTML=`
+    <div class="shop-grid">${potList}</div>
+    <div style="margin-top:12px;text-align:center;">
+      ${player.potions.length>0?`<button class="btn btn-outline btn-sm" style="margin-right:8px" onclick="usePotionMenu()">🧪 Use a Potion</button>`:''}
+      <button class="btn btn-outline" onclick="closeEventModal_done()">Leave</button>
+    </div>`;
+  document.getElementById('event-modal').classList.remove('hidden');
+  window._eventOnDone=onDone;
+  window._shopPlayer=player;
+}
+
+function buyPotion(potIdx){
+  const player=window._shopPlayer||cur();
+  if(player.gold<200||player.potions.length>=2) return;
+  deductGold(player,200,'potion');
+  // Random potion — player doesn't know which
+  const pot=POTIONS[randInt(0,POTIONS.length-1)];
+  player.potions.push(pot);
+  log(`${player.name} buys a mysterious potion!`,'success');
+  renderPlayerCards();
+  closeEventModal();
+  if(window._eventOnDone) window._eventOnDone();
+}
+
+function usePotionMenu(){
+  const player=window._shopPlayer||cur();
+  if(!player.potions.length) return;
+  const pot=player.potions.shift();
+  applyPotion(player,pot);
+  renderPlayerCards();
+  closeEventModal();
+  if(window._eventOnDone) window._eventOnDone();
+}
+
+function applyPotion(player, pot){
+  if(pot.effect==='gain_gold'){ player.gold+=pot.value; log(`${player.name} drinks ${pot.name}: +${pot.value}g!`,'success'); }
+  else if(pot.effect==='lose_gold'){ deductGold(player,Math.abs(pot.value),'cursed potion'); log(`${player.name} suffers a cursed potion: -${Math.abs(pot.value)}g`,'danger'); }
+  else if(pot.effect==='negate_rent'){ player.potionBuff='negate_rent'; log(`${player.name} will halve their next rent payment.`,'success'); }
+  else if(pot.effect==='extra_turn'){ log(`${player.name} gains an extra turn!`,'success'); }
+  else { log(`${player.name} uses ${pot.name}: ${pot.desc}`,'success'); }
+  checkBankruptcy(player);
+}
+
+// ═══════════════════════════════════════════════════════════
+// JAIL
+// ═══════════════════════════════════════════════════════════
+function sendToJail(player){
+  player.pos=10; // Guard's Quarters
+  player.inJail=true;
+  player.jailTurns=0;
+  moveToken(player.idx,10);
+  log(`${player.name} is sent to the Dungeon Keep!`,'danger');
+  renderPlayerCards();
+}
+
+function payJailFine(){
+  const p=cur();
+  if(p.gold<50){log('Not enough gold to pay the fine!','danger'); return;}
+  deductGold(p,50,'jail fine');
+  p.inJail=false; p.jailTurns=0;
+  log(`${p.name} pays 50g and escapes the Dungeon!`,'success');
+  renderPlayerCards();
+  document.getElementById('jail-pay-btn').style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TILE DISPLAY (owner glow + building pips)
+// ═══════════════════════════════════════════════════════════
+function updateTileDisplay(tileId, owner){
+  const el=document.getElementById(`tile-${tileId}`);
+  if(!el) return;
+  // Remove old owner classes
+  el.classList.remove('owned-p0','owned-p1','owned-p2','owned-p3','owned-p4','owned-p5');
+  // Remove old flag/mortgage overlays
+  el.querySelector('.owner-flag')?.remove();
+  el.querySelector('.mortgaged-badge')?.remove();
+
+  if(owner){
+    el.classList.add(`owned-p${owner.idx}`);
+    // Small colored badge with player initial
+    const flag = document.createElement('div');
+    flag.className = 'owner-flag';
+    flag.style.background = owner.color;
+    flag.textContent = owner.name.charAt(0).toUpperCase();
+    flag.title = `Owned by ${owner.name}`;
+    el.appendChild(flag);
+  }
+
+  // Mortgaged overlay
+  if(G.mortgaged && G.mortgaged[tileId]){
+    const mb = document.createElement('div');
+    mb.className = 'mortgaged-badge';
+    mb.innerHTML = '<span>MRTG</span>';
+    el.appendChild(mb);
+  }
+}
+
+// Refresh all tile displays (call after loading saved state or bankruptcy)
+function refreshAllTileDisplays(){
+  TILES.forEach(t=>{
+    if(t.type==='property'||t.type==='railroad'||t.type==='utility'){
+      const ownIdx = G.tileOwners[t.id];
+      updateTileDisplay(t.id, ownIdx!==undefined ? G.players[ownIdx] : null);
+    }
+  });
+}
+
+function updateBuildingPips(tileId){
+  const count = G.buildings[tileId]||0;
+  for(let i=0;i<5;i++){
+    const pip=document.getElementById(`pip-${tileId}-${i}`);
+    if(!pip) continue;
+    pip.classList.remove('filled','hotel');
+    if(i < count){
+      if(count===5 && i===4) pip.classList.add('hotel');
+      else pip.classList.add('filled');
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Helper: add mortgage/sell buttons to any purchasable tile's action area
+function _addOwnerActions(actions, tileId, tile, owner, currentPlayer){
+  if(G.phase==='playing' && currentPlayer && owner && owner.idx===currentPlayer.idx){
+    if(!G.mortgaged[tileId]){
+      const mortgageVal = Math.floor((G.tilePrices[tileId]||tile.price)/2);
+      actions.innerHTML+=`<button class="btn btn-outline btn-sm" style="border-color:#f39c12;color:#f39c12;" onclick="mortgageTile(${tileId})">⚓ Mortgage (+${mortgageVal}g)</button>`;
+    } else {
+      const unmortgageCost = Math.floor((G.tilePrices[tileId]||tile.price)/2*1.1);
+      actions.innerHTML+=`<button class="btn btn-outline btn-sm" style="border-color:#2ecc71;color:#2ecc71;" onclick="unmortgageTile(${tileId})" ${currentPlayer.gold<unmortgageCost?'disabled':''}>✅ Lift Mortgage (${unmortgageCost}g)</button>`;
+    }
+    const sellVal = Math.floor((G.tilePrices[tileId]||tile.price)*0.6);
+    actions.innerHTML+=`<button class="btn btn-danger btn-sm" onclick="if(confirm('Sell ${tile.name} for ${sellVal}g?'))sellProperty(${tileId})">🏚 Sell (+${sellVal}g)</button>`;
+  }
+  actions.innerHTML+=`<button class="btn btn-outline btn-sm" onclick="closeTileInfo()">Close</button>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TILE INFO MODAL (click any tile to inspect)
+// ═══════════════════════════════════════════════════════════
+function showTileInfo(tileId){
+  const tile = TILES[tileId];
+  if(!tile) return;
+  const ownerIdx = G.tileOwners[tileId];
+  const owner = ownerIdx!==undefined ? G.players[ownerIdx] : null;
+  const buildCount = G.buildings[tileId]||0;
+  const currentPlayer = G.phase==='playing' ? cur() : null;
+
+  // Swatch
+  const swatch = document.getElementById('tinfo-swatch');
+  const titleEl = document.getElementById('tinfo-title');
+  const groupEl = document.getElementById('tinfo-group');
+  const ownerWrap = document.getElementById('tinfo-owner-wrap');
+  const body = document.getElementById('tinfo-body');
+  const actions = document.getElementById('tinfo-actions');
+
+  titleEl.textContent = tile.name;
+  groupEl.textContent = '';
+  ownerWrap.innerHTML = '';
+  body.innerHTML = '';
+  actions.innerHTML = '';
+
+  if(tile.type==='property'){
+    const hex = COLOR_HEX[tile.color]||'#555';
+    swatch.style.background = `linear-gradient(180deg,${hex},${hex}88)`;
+    swatch.style.display='block';
+    groupEl.textContent = GROUP_NAMES[tile.color]||tile.color;
+
+    if(owner){
+      ownerWrap.innerHTML=`<div class="tinfo-owner-badge" style="background:${owner.color}22;border:1px solid ${owner.color}66;color:${owner.color};">
+        <div style="width:8px;height:8px;border-radius:50%;background:${owner.color}"></div>
+        Owned by ${owner.name}
+      </div>`;
+    }
+
+    // Check if current player owns full group
+    const groupTiles = COLOR_GROUPS[tile.color]||[];
+    const ownerHasGroup = owner && groupTiles.every(id=>G.tileOwners[id]===ownerIdx);
+
+    // Rent table
+    const rentLabels = ['Base rent','Full color group','1 Outpost','2 Outposts','3 Outposts','City','Capital'];
+    const rentValues = [tile.rent[0], tile.rent[0]*2, tile.rent[1], tile.rent[2], tile.rent[3], tile.rent[4], tile.rent[5]];
+    let rentRows = '';
+    rentLabels.forEach((lbl,i)=>{
+      // Determine which row is currently active
+      let activeRow = 0; // base
+      if(owner){
+        if(ownerHasGroup && buildCount===0) activeRow=1;
+        else if(buildCount>0) activeRow = Math.min(buildCount+1, 6);
+      }
+      const isActive = (i===activeRow && owner);
+      rentRows += `<tr class="${isActive?'current-rent':''}">
+        <td>${lbl}${i===0?'':''}</td>
+        <td>${rentValues[i]}g${isActive?' ◄':''}</td>
+      </tr>`;
+    });
+
+    body.innerHTML=`
+      <div class="tinfo-section">
+        <div class="tinfo-section-title">Rent Schedule</div>
+        <table class="rent-table"><tbody>${rentRows}</tbody></table>
+      </div>
+      <div class="tinfo-section">
+        <div class="tinfo-stat-row"><span>Purchase Price</span><span>${G.tilePrices[tileId]||tile.price}g</span></div>
+        <div class="tinfo-stat-row"><span>Build Cost (per level)</span><span>${tile.houseCost}g</span></div>
+        <div class="tinfo-stat-row"><span>Mortgage Value</span><span>${Math.floor((G.tilePrices[tileId]||tile.price)/2)}g</span></div>
+      </div>
+      <div class="tinfo-section">
+        <div class="tinfo-section-title">Buildings (${buildCount}/5)</div>
+        <div class="tinfo-building-row">
+          ${Array(5).fill(0).map((_,i)=>`<div class="tinfo-pip ${i<buildCount?'filled':''}" title="${i<4?BUILDING_NAMES[i]:'Capital'}">${i<buildCount?(i===4?'🏰':'🏠'):''}</div>`).join('')}
+          <span style="font-size:0.75rem;color:var(--dim);align-self:center;margin-left:4px;">
+            ${buildCount===0?'No buildings':buildCount===5?'Capital built':BUILDING_NAMES[buildCount-1]+' built'}
+          </span>
+        </div>
+      </div>`;
+
+    // Action buttons
+    if(G.phase==='playing' && currentPlayer){
+      if(!owner && G.turnPhase!=='roll'){
+        actions.innerHTML+=`<button class="btn btn-gold btn-sm" onclick="closeTileInfo();showEvent(TILES[${tileId}],cur(),()=>endTurn())">Enter ${tile.name}</button>`;
+      }
+      if(owner && owner.idx===currentPlayer.idx){
+        if(ownerHasGroup && buildCount<5 && !G.mortgaged[tileId]){
+          const buildCost=tile.houseCost;
+          actions.innerHTML+=`<button class="btn btn-outline btn-sm" onclick="buildOnTile(${tileId})" ${currentPlayer.gold<buildCost?'disabled':''}>
+            🏗 Build ${BUILDING_NAMES[buildCount]||'Capital'} (${buildCost}g)</button>`;
+        }
+        if(!G.mortgaged[tileId]){
+          const mortgageVal=Math.floor((G.tilePrices[tileId]||tile.price)/2);
+          actions.innerHTML+=`<button class="btn btn-outline btn-sm" style="border-color:#f39c12;color:#f39c12;" onclick="mortgageTile(${tileId})">⚓ Mortgage (+${mortgageVal}g)</button>`;
+        } else {
+          const unmortgageCost=Math.floor((G.tilePrices[tileId]||tile.price)/2*1.1);
+          actions.innerHTML+=`<button class="btn btn-outline btn-sm" style="border-color:#2ecc71;color:#2ecc71;" onclick="unmortgageTile(${tileId})" ${currentPlayer.gold<unmortgageCost?'disabled':''}>✅ Lift Mortgage (${unmortgageCost}g)</button>`;
+        }
+        const sellVal=Math.floor((G.tilePrices[tileId]||tile.price)*0.6)+(buildCount*Math.floor(tile.houseCost/2));
+        actions.innerHTML+=`<button class="btn btn-danger btn-sm" onclick="if(confirm('Sell ${tile.name} for ${sellVal}g?'))sellProperty(${tileId})">🏚 Sell (+${sellVal}g)</button>`;
+      }
+    }
+    actions.innerHTML+=`<button class="btn btn-outline btn-sm" onclick="closeTileInfo()">Close</button>`;
+
+  } else if(tile.type==='railroad'){
+    swatch.style.background='linear-gradient(180deg,#333,#111)';
+    swatch.style.display='block';
+    groupEl.textContent='Caravan Crossing';
+    if(owner) ownerWrap.innerHTML=`<div class="tinfo-owner-badge" style="background:${owner.color}22;border:1px solid ${owner.color}66;color:${owner.color};"><div style="width:8px;height:8px;border-radius:50%;background:${owner.color}"></div>Owned by ${owner.name}</div>`;
+    const ownerRRCount = owner ? TILES.filter(t=>t.type==='railroad'&&G.tileOwners[t.id]===ownerIdx).length : 0;
+    body.innerHTML=`
+      <div class="tinfo-section">
+        <div class="tinfo-section-title">Toll Revenue (by crossings owned)</div>
+        <table class="rent-table"><tbody>
+          ${[1,2,3,4].map(n=>`<tr class="${owner&&ownerRRCount===n?'current-rent':''}"><td>${n} Crossing${n>1?'s':''}</td><td>${[25,50,100,200][n-1]}g${owner&&ownerRRCount===n?' ◄':''}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+      <div class="tinfo-stat-row"><span>Purchase Price</span><span>200g</span></div>`;
+    _addOwnerActions(actions, tileId, tile, owner, currentPlayer);
+
+  } else if(tile.type==='utility'){
+    swatch.style.background = tile.utilityType==='guild'
+      ? 'linear-gradient(180deg,#4a0d8a,#200840)'
+      : 'linear-gradient(180deg,#0d6a4a,#041a14)';
+    swatch.style.display='block';
+    groupEl.textContent = tile.utilityType==='guild' ? 'Arcane Utility' : 'Alchemical Utility';
+    if(owner) ownerWrap.innerHTML=`<div class="tinfo-owner-badge" style="background:${owner.color}22;border:1px solid ${owner.color}66;color:${owner.color};"><div style="width:8px;height:8px;border-radius:50%;background:${owner.color}"></div>Owned by ${owner.name}</div>`;
+    const utilCount = owner ? TILES.filter(t=>t.type==='utility'&&G.tileOwners[t.id]===ownerIdx).length : 0;
+    body.innerHTML=`
+      <div class="tinfo-section">
+        <div class="tinfo-stat-row"><span>Purchase Price</span><span>150g</span></div>
+        <div class="tinfo-stat-row"><span>1 Utility owned</span><span>4× dice roll</span></div>
+        <div class="tinfo-stat-row"><span>Both Utilities owned</span><span>10× dice roll</span></div>
+        ${owner?`<div class="tinfo-stat-row" style="color:#88ff88;"><span>Current toll</span><span>${utilCount===2?'10×':'4×'} dice</span></div>`:''}
+      </div>
+      <div class="tinfo-section" style="font-size:0.82rem;color:var(--dim);font-style:italic;">
+        ${tile.utilityType==='guild'?'The Mage\'s Guild sells enchanted equipment. Membership grants access to the full gear catalogue.':'The Potion Shop offers mysterious brews — effects unknown until consumed. Max 2 potions per player.'}
+      </div>`;
+    _addOwnerActions(actions, tileId, tile, owner, currentPlayer);
+
+  } else {
+    // Special tiles: go, jail, free parking, go_to_jail, chance, community, tax
+    swatch.style.display='none';
+    const specialDescs = {
+      go:      {icon:'🏕',desc:'Pass through or land here to collect 200g from the treasury. Starting gold for all adventurers.',sub:''},
+      jail:    {icon:'⛓',desc:'Just visiting — no effect. Sent here by Fate\'s Judgement? Roll doubles to escape, or pay 50g after up to 3 turns.',sub:''},
+      free_parking:{icon:'⛺',desc:'Safe Haven — a moment of rest. Taxes and fines accumulate in a pot here. The next player to land collects the full pot!',sub:`Current pot: ${G.freeParking}g`},
+      go_to_jail:{icon:'⚖',desc:'Fate\'s Judgement — immediately sent to the Dungeon Keep. Do not pass Adventurer\'s Rest. Do not collect 200g.',sub:''},
+      chance:  {icon:'🌀',desc:'Draw a Fate\'s Whisper card. Could be fortune, misfortune, or something stranger. The Fates are capricious.',sub:'10 possible cards, reshuffled when the deck runs out.'},
+      community:{icon:'💰',desc:'Draw a Treasure Trove card. Hidden riches, cursed coins, helpful potions — anything could emerge from the trove.',sub:'10 possible cards, reshuffled when the deck runs out.'},
+      tax:     {icon:tile.taxAmount>=200?'👑':'💎',desc:`${tile.name}: Pay ${tile.taxAmount}g or 10% of your gold, whichever is less. You may attempt to bribe the tax collector.`,sub:`Current levy: up to ${tile.taxAmount}g`},
+    };
+    const sd = specialDescs[tile.type]||{icon:'❓',desc:'A special tile.',sub:''};
+    titleEl.textContent = tile.name;
+    groupEl.innerHTML = `<span style="font-size:2rem;">${sd.icon}</span>`;
+    body.innerHTML=`<div style="color:#d8c890;font-size:0.92rem;line-height:1.7;font-style:italic;margin-bottom:10px;">${sd.desc}</div>${sd.sub?`<div style="font-family:'Cinzel',serif;font-size:0.8rem;color:var(--gold);text-align:center;">${sd.sub}</div>`:''}`;
+    actions.innerHTML=`<button class="btn btn-outline btn-sm" onclick="closeTileInfo()">Close</button>`;
+  }
+
+  document.getElementById('tile-info-modal').classList.remove('hidden');
+}
+
+function closeTileInfo(){
+  document.getElementById('tile-info-modal').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENT TOAST
+// ═══════════════════════════════════════════════════════════
+function showRentToast(payer, owner, amount, negated=false){
+  const existing = document.querySelector('.rent-toast');
+  if(existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'rent-toast';
+  if(negated){
+    toast.style.borderColor='#2ecc71';
+    toast.innerHTML=`<div style="font-size:1.4rem;color:#88ff88;">🛡 Rent Negated!</div>
+      <div class="rent-from" style="margin-top:6px;">${payer.name}'s Cloak of Shadows blocks the toll</div>`;
+  } else {
+    toast.innerHTML=`
+      <div style="font-size:0.8rem;color:var(--dim);margin-bottom:4px;">${payer.name} pays rent</div>
+      <div class="rent-amt" style="color:${owner.color};">−${amount}g</div>
+      <div class="rent-from">→ ${owner.name}</div>`;
+  }
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(), 2200);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MORTGAGE / SELL SYSTEM
+// ═══════════════════════════════════════════════════════════
+function mortgageTile(tileId){
+  const tile = TILES[tileId];
+  const player = G.players[G.tileOwners[tileId]];
+  if(!player) return;
+  const val = Math.floor((G.tilePrices[tileId]||tile.price)/2);
+  G.mortgaged[tileId] = true;
+  player.gold += val;
+  log(`${player.name} mortgages ${tile.name} for ${val}g.`,'warning');
+  updateTileDisplay(tileId, player);
+  renderPlayerCards();
+  closeTileInfo();
+}
+
+function unmortgageTile(tileId){
+  const tile = TILES[tileId];
+  const player = G.players[G.tileOwners[tileId]];
+  if(!player) return;
+  const cost = Math.floor((G.tilePrices[tileId]||tile.price)/2 * 1.1);
+  if(player.gold < cost){ alert(`Need ${cost}g to lift mortgage.`); return; }
+  deductGold(player, cost, `unmortgage ${tile.name}`);
+  G.mortgaged[tileId] = false;
+  log(`${player.name} lifts mortgage on ${tile.name} (${cost}g).`,'success');
+  updateTileDisplay(tileId, player);
+  renderPlayerCards();
+  closeTileInfo();
+}
+
+function sellProperty(tileId){
+  const tile = TILES[tileId];
+  const player = G.players[G.tileOwners[tileId]];
+  if(!player) return;
+  // Selling returns 60% of purchase price; buildings sell for half build cost each
+  const propVal = Math.floor((G.tilePrices[tileId]||tile.price) * 0.6);
+  const buildVal = (G.buildings[tileId]||0) * Math.floor((tile.houseCost||0)/2);
+  const total = propVal + buildVal;
+  player.gold += total;
+  delete G.tileOwners[tileId];
+  delete G.mortgaged[tileId];
+  G.buildings[tileId] = 0;
+  log(`${player.name} sells ${tile.name} for ${total}g.`,'success');
+  updateTileDisplay(tileId, null);
+  updateBuildingPips(tileId);
+  renderPlayerCards();
+  closeTileInfo();
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUILD PANEL (sidebar)
+// ═══════════════════════════════════════════════════════════
+function refreshBuildPanel(){
+  const panel = document.getElementById('build-panel');
+  if(!panel || G.phase!=='playing') return;
+  const p = cur();
+  // Find color groups this player fully owns
+  const buildable = [];
+  Object.entries(COLOR_GROUPS).forEach(([color, ids])=>{
+    if(ids.every(id=>G.tileOwners[id]===p.idx)){
+      ids.forEach(id=>{
+        const tile = TILES[id];
+        const builds = G.buildings[id]||0;
+        if(builds < 5 && !G.mortgaged[id]){
+          buildable.push({tile, builds});
+        }
+      });
+    }
+  });
+  if(buildable.length===0 || G.turnPhase==='roll'){
+    panel.style.display='none'; return;
+  }
+  panel.style.display='block';
+  panel.innerHTML=`<div class="build-panel-title">🏗 Build (Full Set Owned)</div>`
+  + buildable.map(({tile,builds})=>{
+    const cost = tile.houseCost;
+    const canAfford = p.gold >= cost;
+    const pips = Array(5).fill(0).map((_,i)=>`<div class="bpr-pip ${i<builds?'on':''}"></div>`).join('');
+    return `<div class="build-prop-row">
+      <div class="bpr-name">${tile.name}</div>
+      <div class="bpr-pips">${pips}</div>
+      <button class="btn btn-gold btn-sm bpr-btn" onclick="buildOnTile(${tile.id})" ${canAfford?'':'disabled'} title="${BUILDING_NAMES[builds]||'Capital'}: ${cost}g">
+        +${cost}g
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// PLAYER INFO MODAL (click player card to view holdings)
+// ═══════════════════════════════════════════════════════════
+function showPlayerInfo(playerIdx){
+  const p = G.players[playerIdx];
+  if(!p) return;
+
+  // Header
+  const header = document.getElementById('pinfo-header');
+  header.innerHTML=`
+    <div style="width:44px;height:44px;border-radius:50%;background:${p.color};border:3px solid ${p.color}88;flex-shrink:0;box-shadow:0 0 18px ${p.color}66;"></div>
+    <div>
+      <div style="font-family:'Cinzel',serif;font-size:1.3rem;color:${p.color};font-weight:700;">${p.name}</div>
+      <div style="font-size:0.9rem;color:var(--dim);">${p.bankrupt?'☠ Eliminated':p.inJail?`⛓ Jailed (${p.jailTurns}/3 turns)`:'Active Adventurer'}</div>
+    </div>
+    <div style="margin-left:auto;text-align:right;">
+      <div style="font-family:'Cinzel',serif;font-size:1.4rem;color:var(--gold);">${p.gold}g</div>
+      <div style="font-size:0.75rem;color:var(--dim);">treasury</div>
+    </div>`;
+
+  // Body
+  const body = document.getElementById('pinfo-body');
+  const owned = Object.entries(G.tileOwners)
+    .filter(([,oi])=>oi===playerIdx)
+    .map(([tid])=>TILES[+tid])
+    .filter(Boolean)
+    .sort((a,b)=>a.id-b.id);
+
+  let html='';
+
+  // Stats row
+  html += `<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">`;
+  html += `<div style="flex:1;min-width:90px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:8px;padding:10px;text-align:center;">
+    <div style="font-size:1.1rem;font-family:'Cinzel',serif;color:var(--gold);">${owned.length}</div>
+    <div style="font-size:0.72rem;color:var(--dim);">Properties</div></div>`;
+
+  const totalRR = owned.filter(t=>t.type==='railroad').length;
+  const totalUtil = owned.filter(t=>t.type==='utility').length;
+  const totalBuildings = owned.reduce((s,t)=>(G.buildings[t.id]||0)+s, 0);
+  const netWorth = p.gold + owned.reduce((s,t)=>s+Math.floor((G.tilePrices[t.id]||t.price||0)/2),0);
+
+  html+=`<div style="flex:1;min-width:90px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:8px;padding:10px;text-align:center;">
+    <div style="font-size:1.1rem;font-family:'Cinzel',serif;color:var(--gold);">${netWorth}g</div>
+    <div style="font-size:0.72rem;color:var(--dim);">Est. Net Worth</div></div>`;
+  html+=`<div style="flex:1;min-width:90px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:8px;padding:10px;text-align:center;">
+    <div style="font-size:1.1rem;font-family:'Cinzel',serif;color:var(--gold);">${totalBuildings}</div>
+    <div style="font-size:0.72rem;color:var(--dim);">Buildings</div></div>`;
+  html+=`</div>`;
+
+  // Gear & Potions
+  if(p.gear||p.potions.length>0){
+    html+=`<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">`;
+    if(p.gear) html+=`<span class="tag gear-tag" style="font-size:0.8rem;">⚔ ${p.gear.name}</span>`;
+    p.potions.forEach(pot=>{ html+=`<span class="tag potion-tag" style="font-size:0.8rem;">🧪 ${pot.name}</span>`; });
+    html+=`</div>`;
+  }
+
+  // Properties by group
+  if(owned.length===0){
+    html+=`<div style="text-align:center;color:var(--dim);font-style:italic;padding:20px 0;">No properties yet — the adventure has just begun.</div>`;
+  } else {
+    // Group by color/type
+    const groups={};
+    owned.forEach(t=>{
+      const key = t.color||t.type;
+      if(!groups[key]) groups[key]=[];
+      groups[key].push(t);
+    });
+
+    Object.entries(groups).forEach(([key,tiles])=>{
+      const groupHex = COLOR_HEX[key]||'#555';
+      const groupName = GROUP_NAMES[key]||(key==='railroad'?'Caravan Crossings':key==='utility'?'Utilities':key);
+      const groupIcon = GROUP_ICONS[key]||(key==='railroad'?'🐪':key==='utility'?'⚗':'🏛');
+      const totalInGroup = key==='railroad'?4:key==='utility'?2:(COLOR_GROUPS[key]?.length||0);
+      const ownsAll = totalInGroup>0 && tiles.length>=totalInGroup;
+
+      html+=`<div style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+          <div style="width:10px;height:10px;border-radius:2px;background:${groupHex};flex-shrink:0;"></div>
+          <span style="font-family:'Cinzel',serif;font-size:0.78rem;color:${groupHex};letter-spacing:1px;">${groupIcon} ${groupName}</span>
+          ${ownsAll?`<span style="font-size:0.7rem;color:#88ff88;background:rgba(136,255,136,0.1);border:1px solid #88ff8844;border-radius:10px;padding:1px 6px;">FULL SET ⚡</span>`:`<span style="font-size:0.7rem;color:var(--dim);">(${tiles.length}/${totalInGroup})</span>`}
+        </div>`;
+
+      tiles.forEach(t=>{
+        const builds = G.buildings[t.id]||0;
+        const rent = t.rent ? (builds>0?t.rent[builds]:ownsAll?t.rent[0]*2:t.rent[0]) : null;
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px;border-left:3px solid ${groupHex}44;">
+          <div style="flex:1;font-size:0.85rem;">${t.name}</div>
+          ${rent!==null?`<div style="font-size:0.75rem;color:var(--dim);">rent: <span style="color:var(--text)">${rent}g</span></div>`:''}
+          ${builds>0?`<div style="font-size:0.72rem;color:#ffd700;">${BUILDING_NAMES[builds-1]||'Capital'}</div>`:''}
+        </div>`;
+      });
+      html+=`</div>`;
+    });
+  }
+
+  body.innerHTML = html;
+  document.getElementById('player-info-modal').classList.remove('hidden');
+}
+
+function closePlayerInfo(){
+  document.getElementById('player-info-modal').classList.add('hidden');
+}
+
+function toggleSidebar(){
+  const sb = document.getElementById('main-sidebar');
+  const btn = document.getElementById('sidebar-toggle');
+  sb.classList.toggle('collapsed');
+  btn.textContent = sb.classList.contains('collapsed') ? '❮' : '❯';
+  // Rerender tokens after layout shift
+  setTimeout(()=>{ if(G.phase==='playing') renderTokens(); }, 320);
+}
+
+function buildOnTile(tileId){
+  const tile = TILES[tileId];
+  const player = cur();
+  const cost = tile.houseCost;
+  const current = G.buildings[tileId]||0;
+  if(current>=5||player.gold<cost) return;
+  deductGold(player, cost, `building ${BUILDING_NAMES[current]||'Capital'} on ${tile.name}`);
+  G.buildings[tileId] = current+1;
+  updateBuildingPips(tileId);
+  log(`${player.name} builds a ${BUILDING_NAMES[current]||'Capital'} on ${tile.name}!`,'success');
+  renderPlayerCards();
+  closeTileInfo();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TURN END & BANKRUPTCY
+// ═══════════════════════════════════════════════════════════
+function endTurn(){
+  const p = cur();
+  // Doubles bonus roll — complete tile actions first, THEN roll again
+  if(G.doublesPending && !p.inJail && !p.bankrupt){
+    G.doublesPending=false;
+    log(`🎲 ${p.name} rolled doubles — bonus roll!`,'success');
+    renderPlayerCards();
+    renderTokens();
+    document.getElementById('roll-btn').disabled=false;
+    document.getElementById('turn-banner').textContent=`${p.name} — Roll Again (doubles)!`;
+    refreshBuildPanel();
+    return; // same player rolls again
+  }
+  G.doublesPending=false;
+  G.doublesCount=0;
+  renderPlayerCards();
+  renderTokens();
+  document.getElementById('roll-btn').disabled=false;
+  // Next active player
+  let next=(G.currentIdx+1)%G.players.length;
+  let tries=0;
+  while(G.players[next].bankrupt && tries<G.players.length){ next=(next+1)%G.players.length; tries++; }
+  G.currentIdx=next;
+  renderPlayerCards();
+  startTurn(); // startTurn already calls refreshBuildPanel
+}
+
+function deductGold(player, amount, reason){
+  if(typeof amount==='string') return; // guard against bad calls
+  player.gold=Math.max(0, player.gold-amount);
+  if(reason) log(`${player.name} pays ${amount}g (${reason})`,'danger');
+  checkBankruptcy(player);
+}
+
+function checkBankruptcy(player){
+  if(player.bankrupt) return;
+  if(player.gold<=0){
+    player.bankrupt=true;
+    player.gold=0;
+    // Release properties
+    Object.keys(G.tileOwners).forEach(tid=>{ if(G.tileOwners[tid]===player.idx) delete G.tileOwners[tid]; });
+    log(`💀 ${player.name} is BANKRUPT and eliminated from the realm!`,'danger');
+    const remaining=G.players.filter(p=>!p.bankrupt);
+    if(remaining.length===1){
+      showWinner(remaining[0]);
+    }
+    renderPlayerCards();
+  }
+}
+
+function showWinner(player){
+  document.getElementById('win-title').textContent=`${player.name} WINS!`;
+  document.getElementById('win-sub').textContent=`The realm bows before the new champion with ${player.gold}g in the treasury!`;
+  document.getElementById('win-screen').style.display='flex';
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// ═══════════════════════════════════════════════════════════
+// SOUND EFFECTS (Web Audio API — no external files)
+// ═══════════════════════════════════════════════════════════
+const _sfxCtx = (()=>{ try{ return new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } })();
+function _sfxResume(){ if(_sfxCtx && _sfxCtx.state==='suspended') _sfxCtx.resume(); }
+
+function sfxDiceRoll(){
+  if(!_sfxCtx) return;
+  _sfxResume();
+  const t = _sfxCtx.currentTime;
+  // Multiple clack sounds in quick succession
+  [0, 0.08, 0.18, 0.30, 0.44, 0.54].forEach((delay, i) => {
+    const osc = _sfxCtx.createOscillator();
+    const gain = _sfxCtx.createGain();
+    const filter = _sfxCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 180 + i * 30;
+    filter.Q.value = 0.5;
+    osc.type = 'square';
+    osc.frequency.value = 90 + Math.random()*60;
+    gain.gain.setValueAtTime(0, t+delay);
+    gain.gain.linearRampToValueAtTime(0.18 - i*0.02, t+delay+0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, t+delay+0.08);
+    osc.connect(filter); filter.connect(gain); gain.connect(_sfxCtx.destination);
+    osc.start(t+delay); osc.stop(t+delay+0.1);
+  });
+  // Final thud
+  const buf = _sfxCtx.createBuffer(1, _sfxCtx.sampleRate*0.15, _sfxCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,3)*0.4;
+  const src = _sfxCtx.createBufferSource();
+  src.buffer=buf;
+  const g2=_sfxCtx.createGain();
+  g2.gain.value=0.6;
+  src.connect(g2); g2.connect(_sfxCtx.destination);
+  src.start(t+0.58);
+}
+
+function sfxSuccess(){
+  if(!_sfxCtx) return;
+  _sfxResume();
+  const t = _sfxCtx.currentTime;
+  [0,0.12,0.22].forEach((delay,i)=>{
+    const osc=_sfxCtx.createOscillator(), g=_sfxCtx.createGain();
+    osc.type='sine'; osc.frequency.value=[440,554,659][i];
+    g.gain.setValueAtTime(0,t+delay); g.gain.linearRampToValueAtTime(0.15,t+delay+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,t+delay+0.25);
+    osc.connect(g); g.connect(_sfxCtx.destination);
+    osc.start(t+delay); osc.stop(t+delay+0.3);
+  });
+}
+
+function sfxFailure(){
+  if(!_sfxCtx) return;
+  _sfxResume();
+  const t = _sfxCtx.currentTime;
+  [0,0.15].forEach((delay,i)=>{
+    const osc=_sfxCtx.createOscillator(), g=_sfxCtx.createGain();
+    osc.type='sawtooth'; osc.frequency.value=[220,180][i];
+    g.gain.setValueAtTime(0,t+delay); g.gain.linearRampToValueAtTime(0.12,t+delay+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,t+delay+0.3);
+    osc.connect(g); g.connect(_sfxCtx.destination);
+    osc.start(t+delay); osc.stop(t+delay+0.35);
+  });
+}
+
+function sfxCritSuccess(){
+  if(!_sfxCtx) return;
+  _sfxResume();
+  const t = _sfxCtx.currentTime;
+  [0,0.1,0.2,0.3,0.4].forEach((delay,i)=>{
+    const osc=_sfxCtx.createOscillator(), g=_sfxCtx.createGain();
+    osc.type='sine'; osc.frequency.value=[440,523,659,784,1047][i];
+    g.gain.setValueAtTime(0,t+delay); g.gain.linearRampToValueAtTime(0.18,t+delay+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,t+delay+0.35);
+    osc.connect(g); g.connect(_sfxCtx.destination);
+    osc.start(t+delay); osc.stop(t+delay+0.4);
+  });
+}
+
+function sfxCritFail(){
+  if(!_sfxCtx) return;
+  _sfxResume();
+  const t = _sfxCtx.currentTime;
+  const osc=_sfxCtx.createOscillator(), g=_sfxCtx.createGain();
+  osc.type='sawtooth';
+  osc.frequency.setValueAtTime(300,t);
+  osc.frequency.exponentialRampToValueAtTime(60,t+0.6);
+  g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.65);
+  osc.connect(g); g.connect(_sfxCtx.destination);
+  osc.start(t); osc.stop(t+0.7);
+}
+function log(msg, cls=''){
+  const el=document.getElementById('game-log');
+  const div=document.createElement('div');
+  div.className=`log-entry ${cls}`;
+  div.textContent=msg;
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+window.onload=()=>{
+  setPlayerCount(3);
+  renderSetupRows();
+};
+window.addEventListener('resize',()=>{ if(G.phase==='playing') renderTokens(); });
+</script>
+</body>
+</html>
