@@ -404,6 +404,17 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
   </div>
 </div>
 
+<!-- ===== SPECTATOR MODAL (read-only view for non-active players) ===== -->
+<div class="modal-overlay hidden" id="spectator-modal">
+  <div class="modal-box" style="border-color:rgba(255,215,0,0.2);max-width:440px;">
+    <div style="text-align:center;margin-bottom:12px;font-family:'Cinzel',serif;font-size:0.75rem;color:var(--dim);letter-spacing:2px">👁 WATCHING</div>
+    <div class="modal-title" id="spectator-title"></div>
+    <div class="modal-subtitle" id="spectator-subtitle"></div>
+    <div class="modal-story" id="spectator-story" style="margin-bottom:0"></div>
+    <div id="spectator-player-badge" style="text-align:center;margin-top:16px;font-family:'Cinzel',serif;font-size:0.9rem;color:var(--dim)"></div>
+  </div>
+</div>
+
 <!-- ===== CARD MODAL ===== -->
 <div class="modal-overlay hidden" id="card-modal">
   <div class="modal-box card-style">
@@ -886,6 +897,7 @@ function startGame(){
   G.mortgaged = {};
   G.phase = 'playing';
   G.turnPhase = 'roll';
+  G.currentEvent = null;
 
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('game-screen').style.display = 'flex';
@@ -1381,6 +1393,7 @@ async function landOnTile(p, tile){
       owner.gold += rent;
       renderPlayerCards();
       checkBankruptcy(p);
+      syncStateDebounced();
       await sleep(2000);
       endTurn();
     }
@@ -1411,12 +1424,15 @@ function showEvent(tile, player, onDone){
   const ev = tile.event;
   if(!ev){ onDone(); return; }
 
+  const evSubtitle = tile.name + (tile.price?` — ${G.tilePrices[tile.id]||tile.price}g`:'');
   document.getElementById('event-title').textContent = ev.title;
-  document.getElementById('event-subtitle').textContent = tile.name + (tile.price?` — ${G.tilePrices[tile.id]||tile.price}g`:'');
+  document.getElementById('event-subtitle').textContent = evSubtitle;
   document.getElementById('event-story').textContent = ev.story;
   document.getElementById('event-result-area').innerHTML='';
   document.getElementById('purchase-bar').style.display='none';
   document.getElementById('event-modal').classList.remove('hidden');
+  G.currentEvent={type:'event',title:ev.title,subtitle:evSubtitle,story:ev.story,playerName:player.name,playerColor:player.color};
+  syncStateDebounced();
 
   const choicesEl = document.getElementById('event-choices');
   choicesEl.innerHTML='';
@@ -1650,6 +1666,7 @@ function closeEventModal_done(){
 }
 
 function closeEventModal(){
+  G.currentEvent=null; syncStateDebounced();
   document.getElementById('event-modal').classList.add('hidden');
   document.getElementById('event-choices').innerHTML='';
   document.getElementById('event-result-area').innerHTML='';
@@ -1717,6 +1734,8 @@ function applyCardEffect(card, player, deckName, onDone){
   resultEl.style.display='none';
   document.getElementById('card-modal').classList.remove('hidden');
   window._cardOnDone=onDone;
+  G.currentEvent={type:'card',title:card.title,subtitle:deckName,story:card.story,playerName:player.name,playerColor:player.color};
+  syncStateDebounced();
 
   let resultMsg='';
   if(card.effect==='gain_gold'){
@@ -1775,10 +1794,12 @@ function applyCardEffect(card, player, deckName, onDone){
 }
 
 function closeCardModal(){
+  G.currentEvent=null; syncStateDebounced();
   document.getElementById('card-modal').classList.add('hidden');
   if(window._cardOnDone) window._cardOnDone();
 }
 function closeCardModal_then(fn){
+  G.currentEvent=null; syncStateDebounced();
   document.getElementById('card-modal').classList.add('hidden');
   fn();
 }
@@ -2415,6 +2436,7 @@ function deductGold(player, amount, reason){
   player.gold=Math.max(0, player.gold-amount);
   if(reason) log(`${player.name} pays ${amount}g (${reason})`,'danger');
   checkBankruptcy(player);
+  syncStateDebounced();
 }
 
 function checkBankruptcy(player){
@@ -2703,6 +2725,13 @@ function startLobbyPoll(){
 }
 
 let _gamePollTimer = null;
+let _syncDebounce = null;
+
+function syncStateDebounced(){
+  if(_syncDebounce) clearTimeout(_syncDebounce);
+  _syncDebounce=setTimeout(()=>{ syncState(); _syncDebounce=null; }, 600);
+}
+
 function startGamePoll(){
   if(_gamePollTimer) clearInterval(_gamePollTimer);
   _gamePollTimer=setInterval(async()=>{
@@ -2713,12 +2742,14 @@ function startGamePoll(){
       const {data,error}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
       if(error||!data?.state?.game) return;
       const remoteG=data.state.game;
-      // Only apply if something meaningful changed (currentIdx or gold changed)
-      if(remoteG.currentIdx!==G.currentIdx || JSON.stringify(remoteG.tileOwners)!==JSON.stringify(G.tileOwners)){
+      // Apply if turn, gold, or ownership changed
+      const goldChanged=remoteG.players.some((p,i)=>p.gold!==G.players[i]?.gold);
+      if(remoteG.currentIdx!==G.currentIdx || goldChanged ||
+         JSON.stringify(remoteG.tileOwners)!==JSON.stringify(G.tileOwners)){
         applyRemoteState(remoteG);
       }
     }catch(e){ console.warn('game poll error:',e); }
-  },2500);
+  },1000);
 }
 
 function launchGameFromState(rs){
@@ -2752,7 +2783,7 @@ async function hostStartGame(){
   G.deckTreasure=shuffle([...TREASURE_TROVE]);
   G.freeParking=0;G.currentIdx=0;G.doublesCount=0;
   G.doublesPending=false;G.mortgaged={};
-  G.phase='playing';G.turnPhase='roll';
+  G.phase='playing';G.turnPhase='roll';G.currentEvent=null;
 
   await sb.from('game_rooms').update({
     state:{phase:'playing',lobbyPlayers,game:G}
@@ -2760,6 +2791,19 @@ async function hostStartGame(){
 
   // Host transitions immediately
   launchGameFromState({game:G});
+}
+
+function showSpectatorModal(ev){
+  if(!ev)return;
+  document.getElementById('spectator-title').textContent=ev.title;
+  document.getElementById('spectator-subtitle').textContent=ev.subtitle||'';
+  document.getElementById('spectator-story').textContent=ev.story||'';
+  document.getElementById('spectator-player-badge').innerHTML=
+    `<span style="color:${ev.playerColor||'var(--gold)'}">${ev.playerName}</span> is deciding...`;
+  document.getElementById('spectator-modal').classList.remove('hidden');
+}
+function closeSpectatorModal(){
+  document.getElementById('spectator-modal').classList.add('hidden');
 }
 
 function applyRemoteState(remoteG){
@@ -2777,6 +2821,12 @@ function applyRemoteState(remoteG){
   document.getElementById('turn-banner').textContent=`${cur().name}'s Turn`;
   updateRollButton();
   refreshBuildPanel();
+  // Show/hide spectator event modal
+  if(G.currentEvent && (myPlayerIdx===-1 || myPlayerIdx!==G.currentIdx)){
+    showSpectatorModal(G.currentEvent);
+  } else {
+    closeSpectatorModal();
+  }
 }
 
 async function syncState(){
