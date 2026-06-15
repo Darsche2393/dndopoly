@@ -2568,6 +2568,7 @@ let myPlayerIdx = -1;   // -1 = local/unrestricted
 let roomCode = null;
 let isHost = false;
 let _realtimeChannel = null;
+let _pollTimer = null;
 
 function genRoomCode(){
   return Math.random().toString(36).substring(2,6).toUpperCase();
@@ -2600,6 +2601,7 @@ async function createRoom(){
 
   showLobbyWaiting(roomCode,true);
   subscribeToRoom();
+  startLobbyPoll();
 }
 
 async function joinRoom(){
@@ -2623,6 +2625,7 @@ async function joinRoom(){
 
   showLobbyWaiting(code,false);
   subscribeToRoom();
+  startLobbyPoll();
 }
 
 function showLobbyWaiting(code,amHost){
@@ -2676,7 +2679,23 @@ function handleRoomUpdate(rs){
   }
 }
 
+function stopLobbyPoll(){
+  if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; }
+}
+
+function startLobbyPoll(){
+  stopLobbyPoll();
+  _pollTimer=setInterval(async()=>{
+    if(!roomCode||G.phase==='playing'){stopLobbyPoll();return;}
+    try{
+      const {data}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+      if(data?.state) handleRoomUpdate(data.state);
+    }catch(e){}
+  },2000);
+}
+
 function launchGameFromState(rs){
+  stopLobbyPoll();
   Object.assign(G,rs.game);
   document.getElementById('lobby-screen').style.display='none';
   document.getElementById('setup-screen').style.display='none';
