@@ -1173,106 +1173,328 @@ function startGame(){
 function buildCenterArt(){
   const el = document.getElementById('center-art');
   if(!el) return;
+  // Generate star field
+  const stars = [...Array(50)].map((_,i)=>{
+    const x=(i*137+70)%488+6, y=(i*97+20)%160+5, r=i%4===0?1.3:i%3===0?0.9:0.55;
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity="${0.25+i%6*0.08}"/>`;
+  }).join('');
+  // Mountain range
+  const mtns=[{x:55,y:215,w:85,h:95},{x:120,y:195,w:95,h:115},{x:195,y:180,w:75,h:100},
+    {x:255,y:170,w:100,h:125},{x:340,y:175,w:80,h:110},{x:400,y:160,w:90,h:130},{x:455,y:178,w:75,h:105}];
+  const mtnSVG=mtns.map(m=>`
+    <polygon points="${m.x},${m.y+m.h} ${m.x+m.w/2},${m.y} ${m.x+m.w},${m.y+m.h}" fill="#15102a" opacity="0.85"/>
+    <polygon points="${m.x+m.w/2},${m.y} ${m.x+m.w/2+m.w*0.08},${m.y+m.h*0.17} ${m.x+m.w/2-m.w*0.10},${m.y+m.h*0.17}" fill="#c0b8e0" opacity="0.28"/>`).join('');
+  // Left forest
+  const lForest=[{x:78,y:262,s:1.1},{x:105,y:255,s:1.0},{x:65,y:282,s:0.85},{x:90,y:285,s:0.78},
+    {x:122,y:272,s:1.15},{x:140,y:260,s:0.9},{x:72,y:302,s:0.7},{x:112,y:300,s:0.75},{x:148,y:280,s:1.0}].map(t=>`
+    <polygon points="${t.x},${t.y} ${t.x-19*t.s},${t.y+34*t.s} ${t.x+19*t.s},${t.y+34*t.s}" fill="#18481e"/>
+    <polygon points="${t.x},${t.y+8*t.s} ${t.x-21*t.s},${t.y+39*t.s} ${t.x+21*t.s},${t.y+39*t.s}" fill="#1e5a25" opacity="0.7"/>`).join('');
+  // Right forest
+  const rForest=[{x:375,y:278,s:1.0},{x:408,y:268,s:1.1},{x:440,y:262,s:0.9},{x:425,y:292,s:0.8},
+    {x:458,y:282,s:1.0},{x:392,y:295,s:0.7},{x:445,y:300,s:0.8},{x:470,y:268,s:0.85}].map(t=>`
+    <polygon points="${t.x},${t.y} ${t.x-17*t.s},${t.y+30*t.s} ${t.x+17*t.s},${t.y+30*t.s}" fill="#18481e"/>
+    <polygon points="${t.x},${t.y+7*t.s} ${t.x-19*t.s},${t.y+34*t.s} ${t.x+19*t.s},${t.y+34*t.s}" fill="#1e5525" opacity="0.7"/>`).join('');
+  // Castle merlons
+  const topMerlons=[0,6,12,18,24,30,36,42].map(o=>`<rect x="${213+o}" y="157" width="5" height="9" fill="#14102a" rx="1"/>`).join('');
+  const leftMerlons=[0,6,12,18].map(o=>`<rect x="${163+o}" y="200" width="4" height="8" fill="#14102a" rx="1"/>`).join('');
+  const rightMerlons=[0,6,12,18].map(o=>`<rect x="${285+o}" y="200" width="4" height="8" fill="#14102a" rx="1"/>`).join('');
+  const keepMerlons=[0,6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96].map(o=>`<rect x="${185+o}" y="207" width="4" height="7" fill="#14102a" rx="1"/>`).join('');
+  // Market stall awnings
+  const awning=(n,col,col2)=>[0,8,16,24,32,40].map(x=>`<rect x="${-28+x}" y="-20" width="6" height="9" fill="${x%16===0?col:col2}" rx="1"/>`).join('');
   el.innerHTML = `
-<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;opacity:0.82;">
+<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
   <defs>
-    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#0e2212"/>
-      <stop offset="100%" stop-color="#060e08"/>
+    <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06031a"/>
+      <stop offset="35%" stop-color="#130a36"/>
+      <stop offset="65%" stop-color="#1e1050"/>
+      <stop offset="100%" stop-color="#0c1a30"/>
+    </linearGradient>
+    <radialGradient id="moonG" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d8d0f8" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#9980e8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#5548aa" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="glowGold" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffd700" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#ffd700" stop-opacity="0"/>
+    <radialGradient id="torchR" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff9900" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#ff4400" stop-opacity="0"/>
     </radialGradient>
-    <filter id="blur2"><feGaussianBlur stdDeviation="2"/></filter>
-    <filter id="blur4"><feGaussianBlur stdDeviation="4"/></filter>
+    <radialGradient id="blueOrb" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#66aaff" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#2255cc" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="fb2"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="fb5"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="fb10"><feGaussianBlur stdDeviation="10"/></filter>
   </defs>
 
-  <!-- Background -->
-  <rect width="500" height="500" fill="url(#bgGrad)"/>
-  <circle cx="250" cy="250" r="240" fill="url(#glowGold)"/>
+  <!-- SKY -->
+  <rect width="500" height="500" fill="url(#skyG)"/>
+  ${stars}
 
-  <!-- Parchment-style border ring -->
-  <circle cx="250" cy="250" r="235" fill="none" stroke="#ffd700" stroke-width="1.5" stroke-opacity="0.18" stroke-dasharray="6 4"/>
-  <circle cx="250" cy="250" r="228" fill="none" stroke="#ffd700" stroke-width="0.5" stroke-opacity="0.1"/>
+  <!-- Moon -->
+  <circle cx="388" cy="62" r="42" fill="url(#moonG)" filter="url(#fb10)" opacity="0.7"/>
+  <circle cx="388" cy="62" r="20" fill="#dcd4f8" opacity="0.9"/>
+  <circle cx="396" cy="56" r="16" fill="#06031a" opacity="0.88"/>
 
-  <!-- Water / sea fill (light teal) -->
-  <ellipse cx="100" cy="380" rx="90" ry="60" fill="#0a2030" opacity="0.7"/>
-  <ellipse cx="130" cy="400" rx="70" ry="40" fill="#0d2a3a" opacity="0.5"/>
-  <text x="80" y="415" fill="#1a6a8a" font-size="9" font-family="serif" opacity="0.6">~ ~ ~</text>
-  <text x="95" y="430" fill="#1a6a8a" font-size="9" font-family="serif" opacity="0.6">~ ~ ~</text>
+  <!-- Atmospheric clouds -->
+  <ellipse cx="180" cy="95" rx="130" ry="28" fill="#1a1040" opacity="0.45" filter="url(#fb2)"/>
+  <ellipse cx="340" cy="112" rx="110" ry="22" fill="#130a36" opacity="0.35" filter="url(#fb2)"/>
+  <ellipse cx="90"  cy="82" rx="90"  ry="18" fill="#1e1050" opacity="0.3"  filter="url(#fb2)"/>
 
-  <!-- Forest (left) -->
-  ${[...Array(14)].map((_,i)=>{const x=55+i%4*22,y=180+Math.floor(i/4)*24+i%3*5;return`<polygon points="${x},${y} ${x-10},${y+18} ${x+10},${y+18}" fill="#1a4a22" opacity="0.75"/>
-  <polygon points="${x},${y+6} ${x-11},${y+22} ${x+11},${y+22}" fill="#1f5a28" opacity="0.6"/>`}).join('')}
+  <!-- MOUNTAINS -->
+  ${mtnSVG}
+  <rect x="0" y="230" width="500" height="50" fill="#06031a" opacity="0.22" filter="url(#fb5)"/>
 
-  <!-- Mountains (top right) -->
-  ${[{x:320,y:120,s:1.2},{x:360,y:130,s:1},{x:395,y:115,s:1.3},{x:430,y:125,s:0.9},{x:350,y:155,s:0.7},{x:415,y:150,s:0.8}].map(m=>`
-  <polygon points="${m.x},${m.y-40*m.s} ${m.x-30*m.s},${m.y+15} ${m.x+30*m.s},${m.y+15}" fill="#2a3a28" opacity="0.8"/>
-  <polygon points="${m.x},${m.y-40*m.s} ${m.x-12*m.s},${m.y-16*m.s} ${m.x+12*m.s},${m.y-16*m.s}" fill="#d4c4a0" opacity="0.35"/>
-  `).join('')}
+  <!-- GROUND -->
+  <ellipse cx="250" cy="430" rx="290" ry="105" fill="#0d1e0d"/>
+  <rect x="0" y="385" width="500" height="115" fill="#080d08"/>
 
-  <!-- Rolling hills (bottom center) -->
-  <ellipse cx="280" cy="390" rx="100" ry="35" fill="#183020" opacity="0.6"/>
-  <ellipse cx="340" cy="380" rx="80" ry="28" fill="#1e3a28" opacity="0.5"/>
+  <!-- WATERFALL -->
+  <rect x="22" y="168" width="52" height="160" fill="#1a1235" rx="3"/>
+  <rect x="28" y="172" width="40" height="155" fill="#221848" rx="2"/>
+  <rect x="44" y="180" width="13" height="130" fill="#3a7acc" opacity="0.85" rx="5"/>
+  <rect x="49" y="180" width="5"  height="130" fill="#88bfee" opacity="0.55" rx="2"/>
+  <ellipse cx="53" cy="315" rx="30" ry="10" fill="#5599cc" opacity="0.4" filter="url(#fb2)"/>
+  <ellipse cx="55" cy="323" rx="38" ry="12" fill="#2255aa" opacity="0.55"/>
+  <ellipse cx="55" cy="323" rx="28" ry="7"  fill="#4488cc" opacity="0.35"/>
+  <circle cx="48" cy="305" r="2"   fill="#aaddff" opacity="0.75"/>
+  <circle cx="60" cy="298" r="1.5" fill="#aaddff" opacity="0.6"/>
+  <circle cx="42" cy="313" r="1.5" fill="#aaddff" opacity="0.5"/>
 
-  <!-- River winding across -->
-  <path d="M120,250 Q180,230 220,265 Q260,300 310,280 Q350,260 390,290" fill="none" stroke="#1a5a7a" stroke-width="5" stroke-opacity="0.55" stroke-linecap="round"/>
-  <path d="M120,250 Q180,230 220,265 Q260,300 310,280 Q350,260 390,290" fill="none" stroke="#2a8aaa" stroke-width="2" stroke-opacity="0.3" stroke-linecap="round"/>
+  <!-- FORESTS -->
+  ${lForest}
+  <circle cx="88"  cy="270" r="14" fill="#22bb44" opacity="0.05" filter="url(#fb10)"/>
+  <circle cx="118" cy="260" r="11" fill="#22bb44" opacity="0.04" filter="url(#fb10)"/>
+  ${rForest}
 
-  <!-- Castle center-left -->
-  <rect x="195" y="275" width="46" height="38" fill="#1a2a1a" stroke="#4a6a4a" stroke-width="1.2" opacity="0.9"/>
-  <rect x="190" y="265" width="14" height="20" fill="#1e301e" stroke="#4a6a4a" stroke-width="1"/>
-  <rect x="233" y="265" width="14" height="20" fill="#1e301e" stroke="#4a6a4a" stroke-width="1"/>
-  <rect x="208" y="265" width="20" height="16" fill="#1e301e" stroke="#4a6a4a" stroke-width="1"/>
-  <!-- Battlements -->
-  ${[190,197,204,211,218,225,232,239].map(x=>`<rect x="${x}" y="${x<208||x>228?260:260}" width="4" height="6" fill="#253525"/>`).join('')}
-  <!-- Gate -->
-  <rect x="209" y="288" width="18" height="25" rx="9" fill="#0a0f0a"/>
-  <!-- Flag -->
-  <line x1="218" y1="260" x2="218" y2="248" stroke="#888" stroke-width="1.2"/>
-  <polygon points="218,248 230,253 218,258" fill="#c0392b" opacity="0.8"/>
+  <!-- STONE PATH -->
+  <path d="M250,495 Q238,455 218,425 Q208,408 204,392 Q198,372 218,357 Q234,347 250,342"
+        fill="none" stroke="#5a4a28" stroke-width="24" stroke-linecap="round" opacity="0.85"/>
+  <path d="M250,495 Q238,455 218,425 Q208,408 204,392 Q198,372 218,357 Q234,347 250,342"
+        fill="none" stroke="#8a7848" stroke-width="16" stroke-linecap="round" opacity="0.6"/>
+  <path d="M250,342 Q272,332 292,342 Q315,354 342,374 Q364,388 385,405"
+        fill="none" stroke="#5a4a28" stroke-width="16" stroke-linecap="round" opacity="0.7"/>
+  <path d="M250,342 Q272,332 292,342 Q315,354 342,374 Q364,388 385,405"
+        fill="none" stroke="#8a7848" stroke-width="9" stroke-linecap="round" opacity="0.45"/>
 
-  <!-- Village cluster (bottom right) -->
-  ${[{x:350,y:330},{x:372,y:320},{x:390,y:335},{x:364,y:348}].map(v=>`
-  <rect x="${v.x}" y="${v.y}" width="14" height="12" fill="#1a2820" stroke="#3a4a3a" stroke-width="0.8"/>
-  <polygon points="${v.x-1},${v.y} ${v.x+7},${v.y-8} ${v.x+15},${v.y}" fill="#2a1a10" stroke="#4a3a2a" stroke-width="0.8"/>
-  `).join('')}
+  <!-- ===== CASTLE ===== -->
+  <!-- Shadow -->
+  <ellipse cx="242" cy="302" rx="95" ry="16" fill="#000" opacity="0.45" filter="url(#fb5)"/>
+  <!-- Main keep back -->
+  <rect x="182" y="205" width="116" height="98" fill="#221a3a" rx="2"/>
+  <!-- Main keep front -->
+  <rect x="187" y="212" width="106" height="93" fill="#2e2450"/>
+  <!-- Keep merlons -->
+  ${keepMerlons}
+  <!-- Side towers back -->
+  <rect x="160" y="208" width="34" height="90" fill="#1e1832"/>
+  <rect x="286" y="208" width="34" height="90" fill="#1e1832"/>
+  <!-- Side towers front -->
+  <rect x="163" y="216" width="30" height="82" fill="#2a2045"/>
+  <rect x="287" y="216" width="30" height="82" fill="#2a2045"/>
+  <!-- Tower merlons -->
+  ${leftMerlons}${rightMerlons}
+  <!-- Central tall tower -->
+  <rect x="210" y="158" width="60" height="132" fill="#2a2048" rx="2"/>
+  <rect x="214" y="163" width="52" height="126" fill="#362c58"/>
+  <!-- Top merlons -->
+  ${topMerlons}
+  <!-- Tall tower windows (lit warm) -->
+  <rect x="223" y="178" width="11" height="17" rx="6" fill="#ffcc44" opacity="0.95"/>
+  <rect x="241" y="178" width="11" height="17" rx="6" fill="#ffcc44" opacity="0.9"/>
+  <rect x="259" y="180" width="9"  height="14" rx="5" fill="#ffbb33" opacity="0.8"/>
+  <rect x="223" y="178" width="11" height="17" rx="6" fill="#ff9900" opacity="0.25" filter="url(#fb2)"/>
+  <rect x="241" y="178" width="11" height="17" rx="6" fill="#ff9900" opacity="0.25" filter="url(#fb2)"/>
+  <!-- Keep windows (lit) -->
+  <rect x="200" y="232" width="12" height="18" rx="6" fill="#ffaa22" opacity="0.82"/>
+  <rect x="220" y="230" width="12" height="18" rx="6" fill="#ffcc44" opacity="0.9"/>
+  <rect x="240" y="231" width="12" height="18" rx="6" fill="#ffcc44" opacity="0.88"/>
+  <rect x="260" y="232" width="12" height="18" rx="6" fill="#ffaa22" opacity="0.8"/>
+  <rect x="280" y="234" width="10" height="16" rx="5" fill="#ffaa22" opacity="0.7"/>
+  <!-- Side tower windows -->
+  <rect x="172" y="232" width="9" height="13" rx="5" fill="#ffcc44" opacity="0.72"/>
+  <rect x="172" y="254" width="9" height="13" rx="5" fill="#ffbb33" opacity="0.65"/>
+  <rect x="293" y="232" width="9" height="13" rx="5" fill="#ffcc44" opacity="0.72"/>
+  <rect x="293" y="254" width="9" height="13" rx="5" fill="#ffbb33" opacity="0.65"/>
+  <!-- Window glow halos -->
+  <rect x="220" y="230" width="12" height="18" rx="6" fill="#ff8800" opacity="0.2" filter="url(#fb5)"/>
+  <rect x="240" y="231" width="12" height="18" rx="6" fill="#ff8800" opacity="0.2" filter="url(#fb5)"/>
+  <!-- GATE (arched) -->
+  <rect x="222" y="265" width="38" height="40" fill="#100c20"/>
+  <path d="M222,265 Q241,247 260,265" fill="#100c20"/>
+  <line x1="226" y1="265" x2="226" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="232" y1="265" x2="232" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="238" y1="265" x2="238" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="244" y1="265" x2="244" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="250" y1="265" x2="250" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="256" y1="265" x2="256" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="222" y1="278" x2="260" y2="278" stroke="#1e1838" stroke-width="1.5" opacity="0.6"/>
+  <line x1="222" y1="291" x2="260" y2="291" stroke="#1e1838" stroke-width="1.5" opacity="0.6"/>
+  <!-- Gate torches -->
+  <rect x="214" y="270" width="5" height="14" fill="#4a3a18"/>
+  <circle cx="216" cy="268" r="5" fill="#ff9900" opacity="0.95"/>
+  <circle cx="216" cy="268" r="14" fill="url(#torchR)" filter="url(#fb2)"/>
+  <rect x="263" y="270" width="5" height="14" fill="#4a3a18"/>
+  <circle cx="265" cy="268" r="5" fill="#ff9900" opacity="0.95"/>
+  <circle cx="265" cy="268" r="14" fill="url(#torchR)" filter="url(#fb2)"/>
+  <!-- Flags -->
+  <line x1="240" y1="158" x2="240" y2="130" stroke="#8888aa" stroke-width="2"/>
+  <polygon points="240,130 268,139 240,148" fill="#cc2200" opacity="0.92"/>
+  <line x1="177" y1="202" x2="177" y2="180" stroke="#8888aa" stroke-width="1.5"/>
+  <polygon points="177,180 198,188 177,196" fill="#cc2200" opacity="0.85"/>
+  <line x1="303" y1="202" x2="303" y2="180" stroke="#8888aa" stroke-width="1.5"/>
+  <polygon points="303,180 322,188 303,196" fill="#cc2200" opacity="0.85"/>
 
-  <!-- Roads -->
-  <path d="M218,313 Q240,320 280,315 Q330,308 360,330" fill="none" stroke="#3a4a2a" stroke-width="4" stroke-opacity="0.4" stroke-dasharray="8 4"/>
+  <!-- ===== DRAGON (upper right) ===== -->
+  <g transform="translate(398,90) rotate(-18)" opacity="0.96">
+    <ellipse cx="0"  cy="0"   rx="36" ry="14" fill="#8a1600"/>
+    <ellipse cx="4"  cy="-2"  rx="30" ry="10" fill="#cc2200"/>
+    <ellipse cx="36" cy="-8"  rx="18" ry="12" fill="#aa2000"/>
+    <ellipse cx="39" cy="-10" rx="14" ry="8"  fill="#cc2800"/>
+    <ellipse cx="51" cy="-8"  rx="8"  ry="5"  fill="#aa2000"/>
+    <circle cx="43" cy="-14" r="3"  fill="#ffcc00"/>
+    <circle cx="44" cy="-14" r="1.5" fill="#110000"/>
+    <polygon points="38,-19 35,-31 43,-21" fill="#880000"/>
+    <polygon points="45,-17 43,-28 49,-18" fill="#880000"/>
+    <polygon points="25,-10 22,-21 30,-8" fill="#880000"/>
+    <polygon points="14,-7"  fill="#880000"/>
+    <!-- Wings -->
+    <path d="M-5,-5 Q-32,-42 -58,-22 Q-47,6 -14,12 Z" fill="#7a1500" opacity="0.92"/>
+    <line x1="-5" y1="-5" x2="-38" y2="-38" stroke="#551000" stroke-width="1.2" opacity="0.6"/>
+    <line x1="-5" y1="-5" x2="-48" y2="-24" stroke="#551000" stroke-width="1.2" opacity="0.6"/>
+    <line x1="-5" y1="-5" x2="-52" y2="-10" stroke="#551000" stroke-width="1.2" opacity="0.6"/>
+    <path d="M0,-8 Q-22,-47 -52,-32 Q-43,-8 -10,6 Z" fill="#9a1800" opacity="0.95"/>
+    <line x1="0" y1="-8" x2="-32" y2="-44" stroke="#661000" stroke-width="1.3" opacity="0.7"/>
+    <line x1="0" y1="-8" x2="-44" y2="-32" stroke="#661000" stroke-width="1.3" opacity="0.7"/>
+    <!-- Fire breath -->
+    <path d="M56,-6 Q74,6 85,0 Q74,-9 88,-14 Q73,-5 82,-20 Q67,-7 56,-6" fill="#ff6600" opacity="0.9"/>
+    <path d="M56,-6 Q70,2 77,0 Q70,-6 80,-11" fill="#ffaa00" opacity="0.85"/>
+    <circle cx="78" cy="-6" r="14" fill="#ff4400" opacity="0.15" filter="url(#fb10)"/>
+    <!-- Tail -->
+    <path d="M-30,8 Q-52,22 -62,38" fill="none" stroke="#9a1800" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <!-- Dragon fire sky glow -->
+  <circle cx="472" cy="84" r="35" fill="#ff5500" opacity="0.09" filter="url(#fb10)"/>
 
-  <!-- Compass rose -->
-  <g transform="translate(420,390)">
-    <circle r="28" fill="#060e08" stroke="#ffd700" stroke-width="1" stroke-opacity="0.4"/>
-    <polygon points="0,-22 4,-8 0,-12 -4,-8" fill="#ffd700" opacity="0.7"/>
-    <polygon points="0,22 4,8 0,12 -4,8" fill="#8a7a4a" opacity="0.6"/>
-    <polygon points="-22,0 -8,-4 -12,0 -8,4" fill="#8a7a4a" opacity="0.6"/>
-    <polygon points="22,0 8,-4 12,0 8,4" fill="#8a7a4a" opacity="0.6"/>
-    <circle r="4" fill="#ffd700" opacity="0.5"/>
-    <text x="-3" y="-14" fill="#ffd700" font-size="8" font-family="serif" opacity="0.8">N</text>
+  <!-- ===== WIZARD (left) ===== -->
+  <g transform="translate(142,332)" opacity="0.92">
+    <polygon points="0,2 -15,58 15,58"  fill="#4422aa"/>
+    <polygon points="-2,8 -15,58 15,58 2,8" fill="#5533cc"/>
+    <text x="-3" y="38" fill="#aaaaff" font-size="9" opacity="0.65">✦</text>
+    <ellipse cx="0" cy="10" rx="13" ry="10" fill="#5533cc"/>
+    <circle cx="0" cy="-4" r="9" fill="#c8a880"/>
+    <ellipse cx="0" cy="3" rx="5" ry="8" fill="#e8e0d0" opacity="0.75"/>
+    <!-- Hat -->
+    <polygon points="-11,1 11,1 3,-30 -3,-30" fill="#2211aa"/>
+    <ellipse cx="0" cy="1" rx="13" ry="4" fill="#3322cc"/>
+    <text x="-4" y="-12" fill="#ffcc00" font-size="9" opacity="0.9">✦</text>
+    <!-- Staff -->
+    <line x1="15" y1="58" x2="22" y2="-12" stroke="#6a4a20" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="22" cy="-14" r="8"  fill="#4488ff" opacity="0.88"/>
+    <circle cx="22" cy="-14" r="5"  fill="#88aaff" opacity="0.7"/>
+    <circle cx="22" cy="-14" r="18" fill="url(#blueOrb)" filter="url(#fb5)"/>
+    <!-- Outstretched arm with magic bolt -->
+    <line x1="-9" y1="16" x2="-28" y2="6" stroke="#c8a880" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="-31" cy="4" r="7"  fill="#4488ff" opacity="0.65"/>
+    <circle cx="-31" cy="4" r="14" fill="url(#blueOrb)" filter="url(#fb2)"/>
   </g>
 
-  <!-- Decorative corner ornaments -->
-  ${[[50,50,0],[450,50,90],[450,450,180],[50,450,270]].map(([cx,cy,rot])=>`
-  <g transform="translate(${cx},${cy}) rotate(${rot})">
-    <path d="M0,0 L20,0 L20,3 L3,3 L3,20 L0,20 Z" fill="#ffd700" opacity="0.12"/>
-  </g>`).join('')}
+  <!-- ===== KNIGHT ON HORSEBACK (right) ===== -->
+  <g transform="translate(344,348)" opacity="0.92">
+    <!-- Horse -->
+    <ellipse cx="0"  cy="16" rx="30" ry="14" fill="#3a2a1a"/>
+    <ellipse cx="5"  cy="12" rx="25" ry="11" fill="#4a3a22"/>
+    <ellipse cx="30" cy="5"  rx="15" ry="9"  fill="#4a3a22"/>
+    <ellipse cx="38" cy="3"  rx="8"  ry="5"  fill="#3a2a18"/>
+    <circle cx="38" cy="1" r="2" fill="#111"/>
+    <line x1="-16" y1="26" x2="-19" y2="52" stroke="#3a2a18" stroke-width="4.5" stroke-linecap="round"/>
+    <line x1="-5"  y1="27" x2="-6"  y2="54" stroke="#3a2a18" stroke-width="4.5" stroke-linecap="round"/>
+    <line x1="10"  y1="27" x2="12"  y2="54" stroke="#3a2a18" stroke-width="4.5" stroke-linecap="round"/>
+    <line x1="20"  y1="25" x2="25"  y2="52" stroke="#3a2a18" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M-28,16 Q-48,28 -52,44" fill="none" stroke="#3a2a18" stroke-width="5" stroke-linecap="round"/>
+    <!-- Knight body armour -->
+    <rect x="-9" y="-16" width="22" height="26" fill="#6a6a90" rx="2"/>
+    <rect x="-7" y="-14" width="18" height="23" fill="#8888b0" rx="2"/>
+    <!-- Helmet -->
+    <ellipse cx="7"  cy="-23" rx="11" ry="12" fill="#8888b0"/>
+    <rect x="-1"  y="-26" width="18" height="5" fill="#9999c0" rx="1"/>
+    <rect x="3"   y="-23" width="9"  height="4" fill="#2a2a3a" rx="1"/>
+    <!-- Plume -->
+    <path d="M7,-34 Q1,-48 6,-54 Q11,-48 9,-34" fill="#cc2200" opacity="0.92"/>
+    <!-- Lance -->
+    <line x1="13" y1="-16" x2="64" y2="-42" stroke="#6a4a20" stroke-width="3" stroke-linecap="round"/>
+    <polygon points="64,-42 59,-47 68,-40" fill="#cccccc"/>
+    <!-- Shield -->
+    <ellipse cx="-15" cy="-6" rx="11" ry="14" fill="#2244aa"/>
+    <line x1="-15" y1="-20" x2="-15" y2="8"  stroke="#4466cc" stroke-width="1.5" opacity="0.55"/>
+    <line x1="-26" y1="-6" x2="-4"  y2="-6"  stroke="#4466cc" stroke-width="1.5" opacity="0.55"/>
+  </g>
 
-  <!-- Title lettering -->
-  <text x="250" y="212" text-anchor="middle" font-family="Georgia,serif" font-size="28" font-weight="700"
-        fill="#ffd700" opacity="0.22" letter-spacing="3">DnDopoly</text>
-  <text x="250" y="232" text-anchor="middle" font-family="Georgia,serif" font-size="9"
-        fill="#ffd700" opacity="0.15" letter-spacing="8">REALM OF FORTUNE</text>
+  <!-- ===== MARKET STALLS ===== -->
+  <!-- Stall 1: Potions -->
+  <g transform="translate(168,408)">
+    <rect x="-27" y="-14" width="54" height="30" fill="#2a1a0a" rx="2"/>
+    <rect x="-30" y="-21" width="60" height="9" fill="#cc4422" rx="1"/>
+    ${awning(6,'#cc4422','#ee5533')}
+    <circle cx="-10" cy="-7" r="6" fill="#aa44cc" opacity="0.85"/>
+    <circle cx="2"  cy="-7" r="5" fill="#44aaff" opacity="0.8"/>
+    <circle cx="13" cy="-8" r="5" fill="#44cc44" opacity="0.8"/>
+    <circle cx="-10" cy="-7" r="9" fill="#aa44cc" opacity="0.12" filter="url(#fb2)"/>
+    <text x="0" y="18" text-anchor="middle" fill="#ffcc88" font-size="6.5" font-family="serif">POTIONS</text>
+  </g>
+  <!-- Stall 2: Treasury -->
+  <g transform="translate(250,402)">
+    <rect x="-30" y="-14" width="60" height="32" fill="#1a1a0a" rx="2"/>
+    <rect x="-33" y="-22" width="66" height="10" fill="#226622" rx="1"/>
+    ${awning(6,'#226622','#33aa33')}
+    <rect x="-13" y="-9" width="26" height="18" fill="#6a4a10" rx="2"/>
+    <rect x="-13" y="-9" width="26" height="8"  fill="#8a6820" rx="2"/>
+    <circle cx="0"  cy="-6" r="4"  fill="#ffcc00" opacity="0.95"/>
+    <circle cx="0"  cy="-6" r="8"  fill="#ffaa00" opacity="0.18" filter="url(#fb2)"/>
+    <text x="0" y="22" text-anchor="middle" fill="#aaffaa" font-size="6.5" font-family="serif">TREASURY</text>
+  </g>
+  <!-- Stall 3: Armory -->
+  <g transform="translate(332,408)">
+    <rect x="-27" y="-14" width="54" height="30" fill="#1a0a0a" rx="2"/>
+    <rect x="-30" y="-21" width="60" height="9" fill="#882222" rx="1"/>
+    ${awning(6,'#882222','#aa3333')}
+    <line x1="-14" y1="-11" x2="-14" y2="10" stroke="#cccccc" stroke-width="2.5"/>
+    <polygon points="-14,-11 -17,-4 -11,-4" fill="#cccccc"/>
+    <line x1="0"   y1="-11" x2="0"   y2="10" stroke="#ccaa44" stroke-width="2.5"/>
+    <polygon points="0,-11 -3,-4 3,-4" fill="#ccaa44"/>
+    <line x1="14"  y1="-11" x2="14"  y2="10" stroke="#cccccc" stroke-width="2.5"/>
+    <polygon points="14,-11 11,-4 17,-4" fill="#cccccc"/>
+    <text x="0" y="18" text-anchor="middle" fill="#ffaa88" font-size="6.5" font-family="serif">ARMORY</text>
+  </g>
 
-  <!-- Player icons at start positions (decorative) -->
-  <circle cx="250" cy="250" r="3" fill="#ffd700" opacity="0.25"/>
+  <!-- TORCHES along path -->
+  <line x1="198" y1="374" x2="198" y2="412" stroke="#6a4a18" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="198" cy="371" r="6"  fill="#ff9900" opacity="0.97"/>
+  <circle cx="198" cy="371" r="18" fill="url(#torchR)" filter="url(#fb5)"/>
+  <line x1="304" y1="362" x2="304" y2="396" stroke="#6a4a18" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="304" cy="359" r="6"  fill="#ff9900" opacity="0.97"/>
+  <circle cx="304" cy="359" r="18" fill="url(#torchR)" filter="url(#fb5)"/>
+  <line x1="228" y1="346" x2="228" y2="375" stroke="#6a4a18" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="228" cy="343" r="5"  fill="#ff9900" opacity="0.92"/>
+  <circle cx="228" cy="343" r="14" fill="url(#torchR)" filter="url(#fb2)"/>
 
-  <!-- Dotted legend lines -->
-  <text x="85" y="176" fill="#ffd700" font-size="7" font-family="serif" opacity="0.35" letter-spacing="1">ANCIENT WOOD</text>
-  <text x="310" y="100" fill="#ffd700" font-size="7" font-family="serif" opacity="0.35" letter-spacing="1">DRAGONSPINE PEAKS</text>
-  <text x="175" y="320" fill="#ffd700" font-size="7" font-family="serif" opacity="0.35" letter-spacing="1">REALM'S HEART KEEP</text>
-  <text x="55" y="395" fill="#ffd700" font-size="7" font-family="serif" opacity="0.35" letter-spacing="1">AZURE SEA</text>
+  <!-- TITLE BANNER -->
+  <rect x="172" y="459" width="156" height="32" fill="#05030f" opacity="0.82" rx="5"/>
+  <rect x="172" y="459" width="156" height="32" fill="none" stroke="#ffd700" stroke-width="1.2" stroke-opacity="0.55" rx="5"/>
+  <text x="250" y="472" text-anchor="middle" font-family="Georgia,serif" font-size="8.5" fill="#ffd700" opacity="0.95" letter-spacing="1.5">⚔ DnDopoly ⚔</text>
+  <text x="250" y="485" text-anchor="middle" font-family="Georgia,serif" font-size="6.5" fill="#d4b870" opacity="0.78" letter-spacing="2.5">REALM OF FORTUNE</text>
+
+  <!-- Moon glow on scene -->
+  <ellipse cx="388" cy="62" rx="100" ry="80" fill="#9980ff" opacity="0.035" filter="url(#fb10)"/>
+
+  <!-- CORNER ORNAMENTS -->
+  <g fill="#ffd700" opacity="0.32">
+    <path d="M8,8 L46,8 L46,14 L14,14 L14,46 L8,46 Z"/>
+    <path d="M492,8 L454,8 L454,14 L486,14 L486,46 L492,46 Z"/>
+    <path d="M492,492 L454,492 L454,486 L486,486 L486,454 L492,454 Z"/>
+    <path d="M8,492 L46,492 L46,486 L14,486 L14,454 L8,454 Z"/>
+  </g>
 </svg>`;
 }
 
