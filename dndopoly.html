@@ -384,6 +384,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
         <div class="control-btns">
           <button class="btn btn-gold" id="roll-btn" onclick="rollDice()">🎲 Roll the Dice</button>
           <button class="btn btn-outline btn-sm" id="jail-pay-btn" style="display:none" onclick="payJailFine()">⛓ Pay 50g to Escape Jail</button>
+          <button class="btn btn-outline btn-sm" id="use-potion-btn" style="display:none" onclick="showUsePotionPanel()">🧪 Use Potion</button>
         </div>
       </div>
       <div class="section-label">Chronicle</div>
@@ -1904,6 +1905,34 @@ function applyPotion(player, pot){
   checkBankruptcy(player);
 }
 
+function showUsePotionPanel(){
+  const p=cur();
+  if(!p||!p.potions||!p.potions.length) return;
+  document.getElementById('event-title').textContent='🧪 Use a Potion';
+  document.getElementById('event-subtitle').textContent='Choose a potion to drink before you roll.';
+  document.getElementById('event-story').textContent='You rummage through your pack and pull out your potions. Choose wisely — each is single-use.';
+  document.getElementById('event-result-area').innerHTML='';
+  document.getElementById('purchase-bar').style.display='none';
+  document.getElementById('event-choices').innerHTML=p.potions.map((pot,i)=>`
+    <button class="choice-btn" onclick="drinkPotionFromPanel(${i})">
+      ${pot.name}
+      <span class="choice-cost">${pot.desc}</span>
+    </button>`).join('')
+    +`<button class="choice-btn" onclick="closeEventModal()">Put them away</button>`;
+  document.getElementById('event-modal').classList.remove('hidden');
+}
+
+function drinkPotionFromPanel(idx){
+  const p=cur();
+  if(!p||idx>=p.potions.length) return;
+  const pot=p.potions.splice(idx,1)[0];
+  applyPotion(p,pot);
+  renderPlayerCards();
+  syncState();
+  closeEventModal();
+  updateUsePotionBtn();
+}
+
 // ═══════════════════════════════════════════════════════════
 // JAIL
 // ═══════════════════════════════════════════════════════════
@@ -2861,9 +2890,18 @@ async function syncState(){
   }catch(e){console.warn('syncState error:',e);}
 }
 
+function updateUsePotionBtn(){
+  const btn=document.getElementById('use-potion-btn');
+  if(!btn)return;
+  const isMyTurn=(myPlayerIdx===-1)||(myPlayerIdx===G.currentIdx);
+  const p=cur();
+  btn.style.display=(isMyTurn && p && p.potions && p.potions.length>0 && G.turnPhase==='roll')?'':'none';
+}
+
 function updateRollButton(){
   const btn=document.getElementById('roll-btn');
   if(!btn)return;
+  updateUsePotionBtn();
   if(myPlayerIdx===-1){
     // Local play — no restriction, controlled by turnPhase
     btn.disabled=(G.turnPhase!=='roll');
