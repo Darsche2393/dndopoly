@@ -1885,7 +1885,8 @@ async function movePlayerBy(p, spaces){
     log(`${p.name} passes Adventurer's Rest — collect 200g!`,'success');
   }
   p.pos = newPos;
-  await animateTokenWalk(p.idx, oldPos, newPos); // walks tile-by-tile, no extra sleep needed
+  await animateTokenWalk(p.idx, oldPos, newPos);
+  await sleep(900); // let players see where the token landed before the card pops
   await landOnTile(p, TILES[newPos]);
 }
 
