@@ -226,9 +226,21 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
 .player-gold span{font-size:0.7rem;color:var(--dim);margin-left:4px;}
 .player-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
 .tag{font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.1);color:var(--dim);font-family:'Cinzel',serif;}
-.tag.gear-tag{background:rgba(100,60,200,0.3);color:#c8a8ff;}
-.tag.potion-tag{background:rgba(60,160,60,0.3);color:#a8ffa8;}
+.tag.gear-tag{background:rgba(100,60,200,0.3);color:#c8a8ff;cursor:help;position:relative;}
+.tag.potion-tag{background:rgba(60,160,60,0.3);color:#a8ffa8;cursor:help;position:relative;}
 .tag.jail-tag{background:rgba(180,40,40,0.3);color:#ffaaaa;}
+.tag[data-tip]{position:relative;}
+.tag[data-tip]::after{
+  content:attr(data-tip);
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:#1a1a2e;border:1px solid rgba(255,215,0,0.4);border-radius:6px;
+  padding:7px 10px;font-size:0.72rem;color:var(--text);white-space:pre-line;
+  min-width:160px;max-width:220px;text-align:left;line-height:1.5;
+  pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:100;
+  font-family:'Crimson Text',serif;letter-spacing:0;font-weight:normal;
+  box-shadow:0 4px 16px rgba(0,0,0,0.6);
+}
+.tag[data-tip]:hover::after{opacity:1;}
 .in-jail-badge{font-size:0.65rem;color:#ff8888;font-family:'Cinzel',serif;}
 .prop-list{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
 .prop-dot{width:10px;height:10px;border-radius:2px;}
@@ -1325,8 +1337,8 @@ function renderPlayerCards(){
       return `<div class="prop-dot" style="background:${col}" title="${tile.name}"></div>`;
     }).join('');
 
-    const gearTag  = p.gear ? `<span class="tag gear-tag">⚔ ${p.gear.short}</span>` : '';
-    const potTags  = p.potions.map(pot=>`<span class="tag potion-tag">🧪 ${pot.name.split(' ')[0]}</span>`).join('');
+    const gearTag  = p.gear ? `<span class="tag gear-tag" data-tip="${p.gear.name}\n${p.gear.desc}">⚔ ${p.gear.short}</span>` : '';
+    const potTags  = p.potions.map(pot=>`<span class="tag potion-tag" data-tip="${pot.name}\n${pot.desc}">🧪 ${pot.name.split(' ')[1]||pot.name.split(' ')[0]}</span>`).join('');
     const jailTag  = p.inJail ? `<span class="tag jail-tag">⛓ Jailed (${p.jailTurns}/3)</span>` : '';
 
     c.innerHTML += `
@@ -3260,34 +3272,40 @@ function startGamePoll(){
   if(_gamePollTimer) clearInterval(_gamePollTimer);
   _gamePollTimer=setInterval(async()=>{
     if(!roomCode||G.phase!=='playing'){ clearInterval(_gamePollTimer); return; }
-    // Only poll when it's NOT our turn (active player pushes state themselves)
-    if(myPlayerIdx!==-1 && myPlayerIdx===G.currentIdx) return;
     try{
       const {data,error}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
       if(error||!data?.state?.game) return;
       const remoteG=data.state.game;
-      // Apply if turn, gold, or ownership changed
-      const goldChanged=remoteG.players.some((p,i)=>p.gold!==G.players[i]?.gold);
-      const eventChanged=JSON.stringify(remoteG.currentEvent)!==JSON.stringify(G.currentEvent);
-      const logChanged=(remoteG.log?.length||0)>_syncedLogCount;
-      if(remoteG.currentIdx!==G.currentIdx || goldChanged || eventChanged || logChanged ||
-         JSON.stringify(remoteG.tileOwners)!==JSON.stringify(G.tileOwners)){
-        applyRemoteState(remoteG);
-      }
+
+      // ── Always check these regardless of whose turn it is ──
+
       // Pending trade directed at me
       const pt=remoteG.pendingTrade;
       const myIdx=myPlayerIdx===-1?G.currentIdx:myPlayerIdx;
       if(pt&&pt.to===myIdx&&!G.pendingTrade){
-        Object.assign(G,{pendingTrade:pt});
+        G.pendingTrade=pt;
         showIncomingTrade(pt);
       } else if(!pt&&G.pendingTrade){
         G.pendingTrade=null;
         document.getElementById('trade-incoming-modal').classList.add('hidden');
       }
-      // Host: check for rejoin requests
+
+      // Host: rejoin requests
       if(isHost){
         const reqs=data.state.rejoinRequests||[];
         if(reqs.length) showRejoinRequests(reqs);
+      }
+
+      // ── Game state sync — skip when it's our turn (we push, not pull) ──
+      if(myPlayerIdx!==-1 && myPlayerIdx===G.currentIdx) return;
+
+      const goldChanged=remoteG.players.some((p,i)=>p.gold!==G.players[i]?.gold);
+      const eventChanged=JSON.stringify(remoteG.currentEvent)!==JSON.stringify(G.currentEvent);
+      const logChanged=(remoteG.log?.length||0)>_syncedLogCount;
+      const tradeChanged=JSON.stringify(remoteG.pendingTrade)!==JSON.stringify(G.pendingTrade);
+      if(remoteG.currentIdx!==G.currentIdx || goldChanged || eventChanged || logChanged ||
+         tradeChanged || JSON.stringify(remoteG.tileOwners)!==JSON.stringify(G.tileOwners)){
+        applyRemoteState(remoteG);
       }
     }catch(e){ console.warn('game poll error:',e); }
   },1000);
