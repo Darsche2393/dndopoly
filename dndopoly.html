@@ -400,19 +400,31 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
     <div class="modal-subtitle" id="event-subtitle"></div>
     <div class="modal-story" id="event-story"></div>
     <div id="event-result-area"></div>
+    <!-- Vote tally (visible to active player when others have voted) -->
+    <div id="vote-tally" style="display:none;margin:10px 0 4px;padding:10px 12px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:8px;">
+      <div style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--dim);letter-spacing:2px;margin-bottom:7px;">👥 TABLE VOTE</div>
+      <div id="vote-tally-items"></div>
+      <div style="margin-top:8px;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;">
+        <div id="event-timer-fill" style="height:100%;width:100%;background:var(--gold);transition:width 0.5s linear;border-radius:2px;"></div>
+      </div>
+    </div>
     <div class="modal-choices" id="event-choices"></div>
     <div class="purchase-bar" id="purchase-bar" style="display:none"></div>
   </div>
 </div>
 
-<!-- ===== SPECTATOR MODAL (read-only view for non-active players) ===== -->
+<!-- ===== SPECTATOR MODAL (voting view for non-active players) ===== -->
 <div class="modal-overlay hidden" id="spectator-modal">
-  <div class="modal-box" style="border-color:rgba(255,215,0,0.2);max-width:440px;">
+  <div class="modal-box" style="border-color:rgba(255,215,0,0.2);max-width:460px;">
     <div style="text-align:center;margin-bottom:12px;font-family:'Cinzel',serif;font-size:0.75rem;color:var(--dim);letter-spacing:2px">👁 WATCHING</div>
     <div class="modal-title" id="spectator-title"></div>
     <div class="modal-subtitle" id="spectator-subtitle"></div>
-    <div class="modal-story" id="spectator-story" style="margin-bottom:0"></div>
-    <div id="spectator-player-badge" style="text-align:center;margin-top:16px;font-family:'Cinzel',serif;font-size:0.9rem;color:var(--dim)"></div>
+    <div class="modal-story" id="spectator-story"></div>
+    <div id="spectator-choices"></div>
+    <div id="spectator-player-badge" style="text-align:center;margin-top:14px;font-family:'Cinzel',serif;font-size:0.85rem;color:var(--dim)"></div>
+    <div style="margin-top:10px;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;">
+      <div id="spectator-timer-fill" style="height:100%;width:100%;background:var(--gold);transition:width 0.5s linear;border-radius:2px;"></div>
+    </div>
   </div>
 </div>
 
@@ -1374,9 +1386,9 @@ async function landOnTile(p, tile){
       const rentAmt = calcRent(tile, ownedBy);
       // Cloak of Shadows: skip rent once
       if(p.gear?.effect==='skip_rent' && p.gear.cloakUsed!==true){
-        p.gear.cloakUsed=true;
+        p.gear=null; // consumed on use
         showRentToast(p, owner, rentAmt, true);
-        log(`${p.name}'s Cloak of Shadows negates the rent!`,'success');
+        log(`${p.name}'s Cloak of Shadows negates the rent — and dissolves into shadow!`,'success');
         await sleep(1800);
         endTurn(); return;
       }
@@ -1432,9 +1444,28 @@ function showEvent(tile, player, onDone){
   document.getElementById('event-story').textContent = ev.story;
   document.getElementById('event-result-area').innerHTML='';
   document.getElementById('purchase-bar').style.display='none';
-  document.getElementById('event-modal').classList.remove('hidden');
-  G.currentEvent={type:'event',title:ev.title,subtitle:evSubtitle,story:ev.story,playerName:player.name,playerColor:player.color};
+  document.getElementById('vote-tally').style.display='none';
+
+  // Build display choices for voting (safe subset — no game logic)
+  let displayChoices;
+  if(tile.type==='tax'){
+    const taxAmt = Math.min(tile.taxAmount, Math.floor(player.gold*0.1));
+    displayChoices=[{text:`Pay tribute (${taxAmt}g)`}];
+    if(ev.choices&&ev.choices.length>1) displayChoices.push({text:ev.choices[1].text,cost:ev.choices[1].cost,dc:ev.choices[1].dc});
+  } else if(tile.type==='go_to_jail'){
+    displayChoices=[{text:'Accept fate'}];
+  } else {
+    displayChoices=(ev.choices||[]).map(ch=>({text:ch.text,cost:ch.cost,dc:ch.dc}));
+  }
+
+  G.currentEvent={type:'event',title:ev.title,subtitle:evSubtitle,story:ev.story,
+    playerName:player.name,playerColor:player.color,
+    choices:displayChoices, votes:{}, timerStart:Date.now()};
   syncState();
+  if(roomCode) startVotePoll();
+  startEventTimer(G.currentEvent.timerStart);
+
+  document.getElementById('event-modal').classList.remove('hidden');
 
   const choicesEl = document.getElementById('event-choices');
   choicesEl.innerHTML='';
@@ -1442,7 +1473,6 @@ function showEvent(tile, player, onDone){
   if(tile.type==='tax'){
     const taxAmt = Math.min(tile.taxAmount, Math.floor(player.gold*0.1));
     buildChoice({text:`Pay tribute (${taxAmt}g)`,type:'tax_pay'}, tile, player, taxAmt, onDone, choicesEl);
-    // Add bribe if event has it
     if(ev.choices&&ev.choices.length>1){
       buildChoice(ev.choices[1], tile, player, taxAmt, onDone, choicesEl);
     }
@@ -1669,7 +1699,9 @@ function closeEventModal_done(){
 
 function closeEventModal(){
   G.currentEvent=null; syncStateDebounced();
+  stopVotePoll(); stopEventTimer();
   document.getElementById('event-modal').classList.add('hidden');
+  document.getElementById('vote-tally').style.display='none';
   document.getElementById('event-choices').innerHTML='';
   document.getElementById('event-result-area').innerHTML='';
   document.getElementById('purchase-bar').style.display='none';
@@ -2851,10 +2883,122 @@ function showSpectatorModal(ev){
   document.getElementById('spectator-story').textContent=ev.story||'';
   document.getElementById('spectator-player-badge').innerHTML=
     `<span style="color:${ev.playerColor||'var(--gold)'}">${ev.playerName}</span> is deciding...`;
+
+  // Build vote tally
+  const tally={};
+  (ev.choices||[]).forEach((_,i)=>tally[i]=0);
+  Object.values(ev.votes||{}).forEach(idx=>{ if(tally[idx]!==undefined) tally[idx]++; });
+  const totalVotes=Object.values(tally).reduce((a,b)=>a+b,0);
+  const myVote=(ev.votes||{})[mySessionId];
+
+  const choicesEl=document.getElementById('spectator-choices');
+  if(ev.choices&&ev.choices.length&&myPlayerIdx!==-1){
+    choicesEl.innerHTML=`<div style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--dim);letter-spacing:2px;margin:12px 0 8px">👥 CAST YOUR VOTE</div>`
+      +ev.choices.map((ch,i)=>{
+        const voted=(myVote===i);
+        const count=tally[i]||0;
+        return `<button class="choice-btn" onclick="castVote(${i})"
+          style="${voted?'border-color:var(--gold);background:rgba(255,215,0,0.12);':''}"
+          ${voted?'disabled':''}>
+          <span>${ch.text}</span>
+          ${ch.cost?`<span class="choice-cost">Cost: ${ch.cost}g</span>`:''}
+          ${ch.dc?`<span class="choice-risk">DC ${ch.dc}</span>`:''}
+          ${count>0?`<span style="float:right;background:rgba(255,215,0,0.2);color:var(--gold);padding:1px 8px;border-radius:10px;font-size:0.78rem;font-family:'Cinzel',serif;">${count} 🗳</span>`:''}
+        </button>`;
+      }).join('')
+      +(myVote!==undefined?`<div style="text-align:center;font-size:0.78rem;color:var(--gold);margin-top:6px;font-family:'Cinzel',serif">✓ You voted — ${totalVotes} vote${totalVotes!==1?'s':''} cast</div>`:'');
+    choicesEl.style.display='';
+  } else {
+    choicesEl.innerHTML='';
+    choicesEl.style.display='none';
+  }
+
+  if(ev.timerStart) startEventTimer(ev.timerStart);
   document.getElementById('spectator-modal').classList.remove('hidden');
 }
+
 function closeSpectatorModal(){
+  stopEventTimer();
   document.getElementById('spectator-modal').classList.add('hidden');
+  document.getElementById('spectator-choices').innerHTML='';
+}
+
+// ═══════════════════════════════════════════════════════════
+// VOTING & TIMER
+// ═══════════════════════════════════════════════════════════
+const VOTE_TIMER_SECS=25;
+let _timerInterval=null;
+let _votePollTimer=null;
+
+function startEventTimer(timerStart){
+  stopEventTimer();
+  _timerInterval=setInterval(()=>{
+    const elapsed=(Date.now()-timerStart)/1000;
+    const pct=Math.max(0,100-(elapsed/VOTE_TIMER_SECS)*100);
+    const color=pct>50?'var(--gold)':pct>25?'#ff9800':'#f44336';
+    const f1=document.getElementById('event-timer-fill');
+    const f2=document.getElementById('spectator-timer-fill');
+    if(f1){f1.style.width=pct+'%';f1.style.background=color;}
+    if(f2){f2.style.width=pct+'%';f2.style.background=color;}
+    if(pct<=0) stopEventTimer();
+  },500);
+}
+function stopEventTimer(){
+  if(_timerInterval){clearInterval(_timerInterval);_timerInterval=null;}
+}
+
+async function castVote(choiceIdx){
+  if(!roomCode||!G.currentEvent) return;
+  try{
+    const {data}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+    if(!data?.state?.game?.currentEvent) return;
+    const state=data.state;
+    if(!state.game.currentEvent.votes) state.game.currentEvent.votes={};
+    state.game.currentEvent.votes[mySessionId]=choiceIdx;
+    await sb.from('game_rooms').update({state}).eq('id',roomCode);
+    // Update local copy and re-render spectator modal
+    if(!G.currentEvent.votes) G.currentEvent.votes={};
+    G.currentEvent.votes[mySessionId]=choiceIdx;
+    showSpectatorModal(G.currentEvent);
+  }catch(e){console.warn('castVote error:',e);}
+}
+
+function startVotePoll(){
+  stopVotePoll();
+  _votePollTimer=setInterval(async()=>{
+    if(!roomCode||!G.currentEvent){stopVotePoll();return;}
+    try{
+      const {data}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+      const remoteVotes=data?.state?.game?.currentEvent?.votes;
+      if(!remoteVotes) return;
+      if(!G.currentEvent.votes) G.currentEvent.votes={};
+      Object.assign(G.currentEvent.votes,remoteVotes);
+      updateVoteTally(G.currentEvent);
+    }catch(e){}
+  },2000);
+}
+function stopVotePoll(){
+  if(_votePollTimer){clearInterval(_votePollTimer);_votePollTimer=null;}
+}
+
+function updateVoteTally(ev){
+  const tallyEl=document.getElementById('vote-tally');
+  const itemsEl=document.getElementById('vote-tally-items');
+  if(!tallyEl||!itemsEl||!ev?.choices) return;
+  const tally={};
+  ev.choices.forEach((_,i)=>tally[i]=0);
+  Object.values(ev.votes||{}).forEach(idx=>{if(tally[idx]!==undefined)tally[idx]++;});
+  const totalVotes=Object.values(tally).reduce((a,b)=>a+b,0);
+  if(totalVotes===0){tallyEl.style.display='none';return;}
+  tallyEl.style.display='';
+  itemsEl.innerHTML=ev.choices.map((ch,i)=>{
+    const count=tally[i]||0;
+    const pct=totalVotes>0?Math.round((count/totalVotes)*100):0;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:0.82rem;">
+      <span style="flex:1;color:${count>0?'var(--text)':'var(--dim)'}">${ch.text}</span>
+      ${count>0?`<span style="background:rgba(255,215,0,0.2);color:var(--gold);padding:1px 9px;border-radius:10px;font-family:'Cinzel',serif;font-size:0.78rem;">${count} (${pct}%)</span>`:'<span style="color:var(--dim);font-size:0.75rem">—</span>'}
+    </div>`;
+  }).join('')+`<div style="color:var(--dim);font-size:0.72rem;margin-top:4px">${totalVotes} vote${totalVotes!==1?'s':''} cast</div>`;
 }
 
 function applyRemoteState(remoteG){
