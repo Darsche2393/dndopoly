@@ -198,26 +198,60 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
 .tinfo-stat-row span:first-child{color:var(--dim);}
 .tinfo-stat-row span:last-child{color:var(--text);font-family:'Cinzel',serif;}
 
-/* Token */
-.token{
-  position:absolute;width:26px;height:26px;border-radius:50%;
-  border:2.5px solid rgba(255,255,255,0.9);z-index:25;
-  transition:all 0.45s cubic-bezier(0.34,1.56,0.64,1);
-  box-shadow:0 3px 14px rgba(0,0,0,0.95),0 0 12px currentColor,inset 0 1px 0 rgba(255,255,255,0.2);
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Cinzel',serif;font-size:0.65rem;font-weight:700;
-  color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.9);
-  cursor:default;
+/* ===== FANTASY TOKENS ===== */
+.token-wrap{
+  position:absolute;width:30px;display:flex;flex-direction:column;align-items:center;
+  z-index:25;pointer-events:none;
+  transition:left 0.11s linear,top 0.11s linear;
 }
-.token.active-token{
-  box-shadow:0 4px 16px rgba(0,0,0,0.95),0 0 22px currentColor,0 0 0 3px rgba(255,215,0,0.8),inset 0 1px 0 rgba(255,255,255,0.2);
-  transform:translateY(-4px) scale(1.18);
-  z-index:26;
-  animation:tokenBob 1.5s ease-in-out infinite;
+.token-sprite{
+  font-size:22px;line-height:1;display:block;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,0.95)) drop-shadow(0 0 3px rgba(0,0,0,0.8));
+  transform-origin:bottom center;
 }
-@keyframes tokenBob{
-  0%,100%{transform:translateY(-4px) scale(1.18);}
-  50%{transform:translateY(-6px) scale(1.2);}
+.token-badge{
+  width:22px;height:4px;border-radius:3px;margin-top:1px;
+  opacity:0.95;box-shadow:0 1px 6px rgba(0,0,0,0.8);
+}
+.token-shadow{
+  width:14px;height:4px;border-radius:50%;
+  background:rgba(0,0,0,0.55);margin-top:1px;filter:blur(1px);
+}
+/* Active: floating idle */
+.token-wrap.active-token{z-index:26;}
+.token-wrap.active-token .token-sprite{animation:tokenFloat 1.4s ease-in-out infinite;}
+.token-wrap.active-token .token-shadow{animation:tokenShadowIdle 1.4s ease-in-out infinite;}
+.token-wrap.active-token .token-badge{box-shadow:0 0 10px 2px currentColor,0 1px 6px rgba(0,0,0,0.8);}
+@keyframes tokenFloat{
+  0%,100%{transform:translateY(0) scale(1);}
+  50%{transform:translateY(-7px) scale(1.1);}
+}
+@keyframes tokenShadowIdle{
+  0%,100%{transform:scale(1);opacity:0.5;}
+  50%{transform:scale(0.55);opacity:0.15;}
+}
+/* Walking: hop side-to-side */
+.token-wrap.walking .token-sprite{animation:tokenHop 0.18s ease-in-out infinite alternate;}
+.token-wrap.walking .token-shadow{animation:tokenShadowHop 0.18s ease-in-out infinite alternate;}
+@keyframes tokenHop{
+  0%{transform:translateY(0) rotate(-12deg) scaleX(1.1);}
+  100%{transform:translateY(-8px) rotate(12deg) scaleX(0.9);}
+}
+@keyframes tokenShadowHop{
+  0%{transform:scaleX(1.3) scaleY(1);opacity:0.45;}
+  100%{transform:scaleX(0.45) scaleY(0.5);opacity:0.1;}
+}
+/* Gold ring on active token badge */
+.token-wrap.active-token::before{
+  content:'';position:absolute;top:-3px;left:50%;transform:translateX(-50%);
+  width:28px;height:28px;border-radius:50%;
+  border:2px solid rgba(255,215,0,0.6);
+  animation:tokenRing 1.4s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes tokenRing{
+  0%,100%{opacity:0.6;transform:translateX(-50%) scale(1);}
+  50%{opacity:1;transform:translateX(-50%) scale(1.15);}
 }
 
 /* ===== SIDEBAR ===== */
@@ -226,7 +260,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
 .player-card:hover{transform:translateY(-2px);filter:brightness(1.2);box-shadow:0 6px 20px rgba(0,0,0,0.5);}
 .player-card.active-turn{border-color:var(--gold);box-shadow:0 0 24px rgba(255,215,0,0.35),0 0 8px rgba(255,215,0,0.2);animation:cardPulse 2s ease-in-out infinite;}
 .player-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.player-token-icon{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,0.5);flex-shrink:0;}
+.player-token-icon{font-size:1.3rem;width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));}
 .player-name-label{font-family:'Cinzel',serif;font-size:0.95rem;font-weight:600;}
 .player-gold{font-size:1.3rem;color:var(--gold);font-family:'Cinzel',serif;margin-bottom:6px;}
 .player-gold span{font-size:0.7rem;color:var(--dim);margin-left:4px;}
@@ -682,6 +716,16 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
 const PLAYER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c'];
 const COLOR_NAMES   = ['Crimson','Azure','Emerald','Amber','Violet','Teal'];
 const DICE_FACES    = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+
+const TOKEN_TYPES = [
+  { emoji:'🐉', name:'Dragon'   },
+  { emoji:'🧙', name:'Wizard'   },
+  { emoji:'🛡️', name:'Knight'   },
+  { emoji:'🏹', name:'Ranger'   },
+  { emoji:'🥷', name:'Rogue'    },
+  { emoji:'🔮', name:'Sorcerer' },
+];
+const TOKEN_STEP_MS = 120; // ms per tile step while walking
 
 const COLOR_HEX = {
   purple:'#8e44ad', light_blue:'#2980b9', pink:'#c0392b',
@@ -1340,46 +1384,65 @@ function _tokenOffset(slotIdx){
   return { dx: 3 + col*14, dy: 3 + row*14 };
 }
 
+function _placeToken(tokenEl, tilePos, playerIdx, stacked=true){
+  const wrapRect = document.querySelector('.board-wrap').getBoundingClientRect();
+  const tileEl = document.getElementById(`tile-${tilePos}`);
+  if(!tileEl||!wrapRect) return;
+  const tr = tileEl.getBoundingClientRect();
+  let slotIdx = 0;
+  if(stacked){
+    const here = G.players.filter(p=>!p.bankrupt && p.pos===tilePos);
+    slotIdx = Math.max(0, here.findIndex(p=>p.idx===playerIdx));
+  }
+  const {dx,dy} = _tokenOffset(slotIdx);
+  tokenEl.style.left = (tr.left - wrapRect.left + dx) + 'px';
+  tokenEl.style.top  = (tr.top  - wrapRect.top  + dy) + 'px';
+}
+
 function renderTokens(){
   const layer = document.getElementById('token-layer');
   layer.innerHTML='';
-  const wrapRect = document.querySelector('.board-wrap').getBoundingClientRect();
-  // Group players by tile position to handle stacking
-  const posMap = {};
-  G.players.forEach((p,i)=>{ if(!p.bankrupt){ if(!posMap[p.pos]) posMap[p.pos]=[]; posMap[p.pos].push(i); } });
-
   G.players.forEach((p,i)=>{
     if(p.bankrupt) return;
-    const tileEl = document.getElementById(`tile-${p.pos}`);
-    if(!tileEl) return;
-    const tr = tileEl.getBoundingClientRect();
-    const slotIdx = posMap[p.pos].indexOf(i);
-    const {dx,dy} = _tokenOffset(slotIdx);
-    const token = document.createElement('div');
-    token.id = `token-${i}`;
-    token.className = 'token' + (i===G.currentIdx?' active-token':'');
-    token.style.background = p.color;
-    token.style.color = '#fff';
-    token.style.left = (tr.left - wrapRect.left + dx) + 'px';
-    token.style.top  = (tr.top  - wrapRect.top  + dy) + 'px';
-    token.textContent = p.name.charAt(0).toUpperCase();
-    token.title = p.name;
-    layer.appendChild(token);
+    const t = TOKEN_TYPES[i % TOKEN_TYPES.length];
+    const wrap = document.createElement('div');
+    wrap.id = `token-${i}`;
+    wrap.className = 'token-wrap' + (i===G.currentIdx?' active-token':'');
+    wrap.innerHTML = `<div class="token-sprite" title="${p.name} the ${t.name}">${t.emoji}</div>`
+                   + `<div class="token-badge" style="background:${p.color};color:${p.color}"></div>`
+                   + `<div class="token-shadow"></div>`;
+    layer.appendChild(wrap);
+    _placeToken(wrap, p.pos, i, true);
   });
 }
 
+// Quick snap (jail, remote sync, etc.)
 function moveToken(playerIdx, newPos){
-  const wrapRect = document.querySelector('.board-wrap').getBoundingClientRect();
-  const tileEl = document.getElementById(`tile-${newPos}`);
-  const token  = document.getElementById(`token-${playerIdx}`);
-  if(!tileEl||!token) return;
-  const tr = tileEl.getBoundingClientRect();
-  // Count how many non-bankrupt players are on this tile (including this one)
-  const playersOnTile = G.players.filter(p=>!p.bankrupt&&p.pos===newPos);
-  const slotIdx = playersOnTile.findIndex(p=>p.idx===playerIdx);
-  const {dx,dy} = _tokenOffset(Math.max(0,slotIdx));
-  token.style.left = (tr.left - wrapRect.left + dx) + 'px';
-  token.style.top  = (tr.top  - wrapRect.top  + dy) + 'px';
+  const token = document.getElementById(`token-${playerIdx}`);
+  if(!token) return;
+  _placeToken(token, newPos, playerIdx, true);
+}
+
+// Animated step-by-step walk
+async function animateTokenWalk(playerIdx, oldPos, newPos){
+  const token = document.getElementById(`token-${playerIdx}`);
+  if(!token){ return; }
+  token.classList.add('walking');
+  token.classList.remove('active-token');
+
+  // Build tile path (forward around board)
+  const steps=[];
+  let pos=oldPos, guard=0;
+  do{ pos=(pos+1)%40; steps.push(pos); guard++; } while(pos!==newPos && guard<41);
+
+  for(let s=0; s<steps.length; s++){
+    const isLast = s===steps.length-1;
+    _placeToken(token, steps[s], playerIdx, isLast);
+    await sleep(TOKEN_STEP_MS);
+  }
+
+  token.classList.remove('walking');
+  if(playerIdx===G.currentIdx) token.classList.add('active-token');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1405,7 +1468,7 @@ function renderPlayerCards(){
     c.innerHTML += `
     <div class="player-card" id="pcard-${i}" style="background:${p.color}22;border-color:${p.color}55;cursor:pointer;" onclick="showPlayerInfo(${i})" title="Click to see ${p.name}'s holdings">
       <div class="player-card-header">
-        <div class="player-token-icon" style="background:${p.color}"></div>
+        <div class="player-token-icon">${TOKEN_TYPES[i % TOKEN_TYPES.length].emoji}</div>
         <div class="player-name-label" style="color:${p.color}">${p.name}</div>
         <div style="margin-left:auto;font-size:0.7rem;color:var(--dim);">👁 holdings</div>
       </div>
@@ -1516,14 +1579,13 @@ async function rollDice(){
 async function movePlayerBy(p, spaces){
   const oldPos = p.pos;
   const newPos = (p.pos + spaces) % 40;
-  // Check pass Go
+  // Check pass Go (before updating pos so we can detect wrap)
   if(newPos < oldPos && !p.inJail){
     p.gold += 200;
     log(`${p.name} passes Adventurer's Rest — collect 200g!`,'success');
   }
   p.pos = newPos;
-  moveToken(p.idx, newPos);
-  await sleep(500);
+  await animateTokenWalk(p.idx, oldPos, newPos); // walks tile-by-tile, no extra sleep needed
   await landOnTile(p, TILES[newPos]);
 }
 
