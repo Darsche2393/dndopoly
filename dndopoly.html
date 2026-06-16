@@ -1425,6 +1425,7 @@ function renderPlayerCards(){
 // TURN MANAGEMENT
 // ═══════════════════════════════════════════════════════════
 function startTurn(){
+  _resolvingChoice=false; // reset each turn so new player's choices aren't blocked
   const p = cur();
   if(p.skipTurns>0){
     p.skipTurns--;
