@@ -778,7 +778,7 @@ const TILES = [
      ]}},
   // 12 - MAGE'S GUILD
   {id:12, name:"Mage's Guild", type:'utility', utilityType:'guild', price:150, symbol:'🔮', side:'left', gridRow:9,gridCol:1,
-   event:{title:"Mage's Guild",story:'The guild\'s tower hums with arcane energy. A robed master greets you. "We offer only the finest enchanted equipment to worthy adventurers — for the right price." You may join the guild (150g) for utility benefits, or browse equipment directly.',choices:[{text:'Browse Equipment',type:'open_gear_shop'},{text:'Purchase Guild Membership (150g) + shop',type:'buy_then_shop'},{text:'Leave',type:'close'}]}},
+   event:{title:"Mage's Guild",story:'The guild\'s tower hums with arcane energy. A robed master greets you. "We offer only the finest enchanted equipment to worthy adventurers — for the right price." Purchase the guild and collect tolls from every adventurer who passes through, or simply browse the wares.',choices:[{text:'Purchase the Guild (150g)',type:'buy'},{text:'Browse Equipment only',type:'open_gear_shop'},{text:'Leave',type:'close'}]}},
   // 13 - PINK
   {id:13, name:'Stormwatch Tower', type:'property', color:'pink', price:140, rent:[10,50,150,450,625,750], houseCost:100, side:'left', gridRow:8,gridCol:1,
    event:{title:'The Guardian\'s Riddle',story:'The tower\'s stone guardian awakens at your approach, runes blazing across its body. "Three riddles stand between you and this tower. Answer correctly and it is yours at a discount. Fail all three and a curse follows you." Its voice echoes like thunder.',
@@ -885,7 +885,7 @@ const TILES = [
      ]}},
   // 28 - POTION SHOP
   {id:28, name:'Potion Shop', type:'utility', utilityType:'potions', price:150, symbol:'⚗', side:'top', gridRow:1,gridCol:9,
-   event:{title:'The Potion Shop',story:'Bubbling cauldrons and glowing vials fill every shelf. The alchemist grins over thick spectacles. "Every potion is unique, dearie — effects guaranteed, though perhaps not what you expected. 200g each, 350g for two."',choices:[{text:'Browse Potions (200g each)',type:'open_potion_shop'},{text:'Leave',type:'close'}]}},
+   event:{title:'The Potion Shop',story:'Bubbling cauldrons and glowing vials fill every shelf. The alchemist grins over thick spectacles. "Every potion is unique, dearie — effects guaranteed, though perhaps not what you expected." Own this shop and collect a dice-based toll from every visitor.',choices:[{text:'Purchase the Shop (150g)',type:'buy'},{text:'Browse Potions (200g each)',type:'open_potion_shop'},{text:'Leave',type:'close'}]}},
   // 29 - YELLOW
   {id:29, name:'Sunfire Plaza', type:'property', color:'yellow', price:280, rent:[24,120,360,850,1025,1200], houseCost:150, side:'top', gridRow:1,gridCol:10,
    event:{title:'The Grand Festival',story:'The plaza erupts with color and music — a grand festival is underway! The plaza master beckons. "Champion our festival games and win the plaza at a discount. Or perhaps you\'d prefer to browse the rare goods on sale — items that could change the course of your journey."',
@@ -1511,8 +1511,16 @@ async function landOnTile(p, tile){
       // Unowned — trigger event
       showEvent(tile, p, ()=>endTurn());
     } else if(ownedBy===p.idx){
-      log(`${p.name} visits their own ${tile.name}.`);
-      endTurn();
+      if(tile.utilityType==='guild'){
+        log(`${p.name} returns to their Mage's Guild — free gear access!`,'success');
+        openGearShop(p,()=>endTurn());
+      } else if(tile.utilityType==='potions'){
+        log(`${p.name} returns to their Potion Shop — free potion access!`,'success');
+        openPotionShop(p,()=>endTurn());
+      } else {
+        log(`${p.name} visits their own ${tile.name}.`);
+        endTurn();
+      }
     } else {
       // Pay rent
       const owner = G.players[ownedBy];
@@ -3061,9 +3069,13 @@ function startRejoinPoll(){
   },2000);
 }
 
+let _lastRejoinKey='';
 function showRejoinRequests(requests){
-  // Host sees a list of reconnecting players and can assign them slots
   if(!isHost||!requests||!requests.length) return;
+  // Only re-render if the list actually changed — prevents dropdown resets every poll
+  const key=requests.map(r=>r.sessionId).join(',');
+  if(key===_lastRejoinKey) return;
+  _lastRejoinKey=key;
   const existing=document.getElementById('rejoin-host-widget');
   if(existing) existing.remove();
   const widget=document.createElement('div');
