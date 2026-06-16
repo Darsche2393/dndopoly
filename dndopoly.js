@@ -1,0 +1,1178 @@
+// ═══════════════════════════════════════════════════════════
+// GAME DATA
+// ═══════════════════════════════════════════════════════════
+
+const PLAYER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c'];
+const COLOR_NAMES   = ['Crimson','Azure','Emerald','Amber','Violet','Teal'];
+const DICE_FACES    = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+
+const TOKEN_TYPES = [
+  { emoji:'🐉', name:'Dragon'   },
+  { emoji:'🧙', name:'Wizard'   },
+  { emoji:'🛡️', name:'Knight'   },
+  { emoji:'🏹', name:'Ranger'   },
+  { emoji:'🥷', name:'Rogue'    },
+  { emoji:'🔮', name:'Sorcerer' },
+];
+const TOKEN_STEP_MS = 120; // ms per tile step while walking
+
+const COLOR_HEX = {
+  purple:'#8e44ad', light_blue:'#2980b9', pink:'#c0392b',
+  orange:'#d35400', red:'#922b21', yellow:'#b7950b',
+  green:'#1e8449', dark_blue:'#1a3a6b'
+};
+const COLOR_BG = {
+  purple:'#1a0d24', light_blue:'#0a1a2e', pink:'#240a12',
+  orange:'#221000', red:'#1c0808', yellow:'#1a1600',
+  green:'#0a1a0e', dark_blue:'#080d1a'
+};
+const GROUP_ICONS = {
+  purple:'🏚', light_blue:'🏘', pink:'🏠', orange:'🏛',
+  red:'⚔', yellow:'🏰', green:'🌊', dark_blue:'👑'
+};
+const GROUP_NAMES = {
+  purple:'Ancient Ruins', light_blue:'Forest Hamlets', pink:'Mountain Holdings',
+  orange:'Coastal Settlements', red:'War Fortresses', yellow:'Golden Ports',
+  green:'Sea Citadels', dark_blue:'Royal Capitals'
+};
+const BUILDING_NAMES = ['Outpost','Settlement','Town','City','Capital'];
+const RAILROAD_ICONS = {5:'🐪',15:'🌲',25:'⛰',35:'⚓'};
+
+const COLOR_GROUPS = {
+  purple:    [1,3],
+  light_blue:[6,8,9],
+  pink:      [11,13,14],
+  orange:    [16,18,19],
+  red:       [21,23,24],
+  yellow:    [26,27,29],
+  green:     [31,32,34],
+  dark_blue: [37,39]
+};
+
+const GEAR_ITEMS = [
+  {id:'blade',    name:'Blade of the Lost Knight',  price:400, tag:'⚔ Combat',   effect:'combat_bonus', desc:'+3 to all combat rolls, +1d6 damage',       short:'+3 ATK'},
+  {id:'amulet',   name:'Amulet of Eternal Light',   price:350, tag:'🌟 Utility',  effect:'trap_reveal',  desc:'Reveals traps; negates 1 curse per game',   short:'Trap Ward'},
+  {id:'staff',    name:'Staff of the Arcane Wanderer',price:450,tag:'✨ Travel',  effect:'teleport',     desc:'Teleport to any tile once per full circuit',  short:'Teleport'},
+  {id:'cloak',    name:'Cloak of Shadows',           price:400, tag:'🌑 Stealth', effect:'skip_rent',    desc:'Once per game: skip paying rent on any tile', short:'Skip Rent'},
+  {id:'ring',     name:'Ring of the Elemental Lord', price:500, tag:'🔥 Elemental',effect:'elemental',   desc:'+1d8 elemental damage; half damage from traps',short:'+Elem'},
+  {id:'boots',    name:'Boots of the Swift Wind',    price:350, tag:'💨 Speed',   effect:'move_bonus',   desc:'Roll 3 dice per turn; keep best 2',           short:'+Speed'},
+  {id:'helm',     name:'Helm of the Dragon King',    price:450, tag:'🛡 Defense', effect:'defense',      desc:'+4 AC; reduce all gold losses by 10%',        short:'-10% Loss'},
+  {id:'gauntlets',name:'Gauntlets of the Thunderstrike',price:400,tag:'⚡ Power', effect:'double_attack',desc:'+2 attack; one reroll per combat encounter',  short:'+2 ATK Reroll'},
+];
+
+const POTIONS = [
+  {name:'Potion of Fortune',    effect:'gain_gold',   value:150, desc:'Gain 150 gold'},
+  {name:'Potion of Swiftness',  effect:'extra_move',  value:3,   desc:'Move up to 3 extra spaces'},
+  {name:'Potion of Strength',   effect:'combat_bonus',value:5,   desc:'+5 to next combat roll'},
+  {name:'Elixir of Cursing',    effect:'curse_player',value:0,   desc:'Curse a player: they lose 50g per turn for 3 turns'},
+  {name:'Draught of Wealth',    effect:'gain_gold',   value:200, desc:'Gain 200 gold'},
+  {name:'Potion of Misfortune', effect:'lose_gold',   value:-100,desc:'Oops — lose 100 gold (cursed batch)'},
+  {name:'Tincture of Luck',     effect:'reroll',      value:0,   desc:'Reroll your dice once on any turn'},
+  {name:'Potion of Haste',      effect:'extra_turn',  value:0,   desc:'Take an extra turn immediately'},
+  {name:'Vial of Poison',       effect:'poison_player',value:0,  desc:'Target player loses 75g'},
+  {name:'Brew of Protection',   effect:'negate_rent', value:0,   desc:'Next time you pay rent, it is halved'},
+];
+
+const FATES_WHISPER = [
+  {title:"Fortune's Favor",    story:"A shimmer of golden light surrounds you. The dice of fate spin in your favor!",    effect:'gain_gold', value:100},
+  {title:"The Cursed Coin",    story:"You find a glinting coin on the road — but its magic inverts your next gold gain.", effect:'lose_gold', value:-75},
+  {title:"Ancient Prophecy",   story:"A seer whispers of a destined tile. Move forward 3 spaces, whatever awaits you.", effect:'move', value:3},
+  {title:"Shadowy Deal",       story:"A hooded figure offers gold in exchange for... a future favor. You accept.",       effect:'gain_gold', value:150},
+  {title:"Wrath of the Storm", story:"Winds howl and lightning cracks! All players lose 50 gold to the storm's fury.",   effect:'all_lose', value:-50},
+  {title:"Mysterious Benefactor",story:"An anonymous letter arrives with gold enclosed. No strings attached... probably.",effect:'gain_gold',value:200},
+  {title:"Whispers of Betrayal",story:"A rival has spread rumors about you. Pay 75g in reputation damage.",              effect:'lose_gold', value:-75},
+  {title:"Fate's Gamble",      story:"You find a gambling den. Roll a die: 1-3 lose 100g, 4-6 gain 150g.",              effect:'gamble', value:0},
+  {title:"Gift of the Gods",   story:"A deity takes notice of your journey and gifts you passage. Advance to Go!",       effect:'advance_go', value:0},
+  {title:"The Wheel of Fate",  story:"The wheel spins wildly. Move back 3 spaces and discover what awaits.",             effect:'move', value:-3},
+];
+
+const TREASURE_TROVE = [
+  {title:"Dragon's Hoard",      story:"Behind a false wall: a pile of gold left by a long-dead dragon. Take it!",          effect:'gain_gold', value:200},
+  {title:"Treasure Mimic!",     story:"The chest snaps shut! You fight it off but lose gold in the struggle.",              effect:'lose_gold', value:-100},
+  {title:"Found Heirloom",      story:"An ancient family crest worth a small fortune. The guild buys it immediately.",      effect:'gain_gold', value:150},
+  {title:"Cursed Coin Chest",   story:"Glittering gold — but cursed. Take 100g now but lose 25g per turn for 3 turns.",    effect:'curse_self', value:0},
+  {title:"Ancient Scroll",      story:"A teleportation scroll! Use it to advance to any tile you name. (DM discretion)",   effect:'gain_gold', value:75},
+  {title:"Blessing of Abundance",story:"A divine blessing multiplies your gold. Collect 200g from the treasury.",           effect:'gain_gold', value:200},
+  {title:"Merchant's Cache",    story:"A lost merchant's goods. Return them for a reward of 100g from the bank.",          effect:'gain_gold', value:100},
+  {title:"Wishing Well",        story:"Toss 50g into the well and your wish comes true — gain 250g back!",                 effect:'gain_gold', value:250, cost:50},
+  {title:"Forgotten Map",       story:"A treasure map! The DM reveals a hidden cache on a nearby tile worth 175g.",        effect:'gain_gold', value:175},
+  {title:"Mysterious Potion",   story:"A random potion falls from the trove. You may carry up to 2 potions.",              effect:'give_potion', value:0},
+];
+
+// Full 40-tile board
+const TILES = [
+  // 0 - GO
+  {id:0, name:"Adventurer's Rest", type:'go', symbol:'🏕', gridRow:11,gridCol:11, side:'corner',
+   event:{title:"Adventurer's Rest",story:"You complete another circuit of the realm! Collect 200 gold from the treasury and prepare for another round.",choices:[{text:"Collect 200g and continue",type:'close'}]}},
+  // 1 - PURPLE
+  {id:1, name:'Shadowmoor Village', type:'property', color:'purple', price:60, rent:[2,10,30,90,160,250], houseCost:50, side:'bottom', gridRow:11,gridCol:10,
+   event:{title:'The Assassin\'s Contract',story:'You enter Shadowmoor Village to find it eerily silent. A hooded figure steps from the shadows. "We have an offer, traveler. Help us eliminate a troublesome merchant in Azure Bay, and the village is yours at half price. Refuse... and we may need to deal with you as well." Only you and the DM know that you could also kill the mayor to seize the town outright.',
+     choices:[
+       {text:'Accept the contract (buy at 30g if successful)',type:'combat',dc:10,goldOnFail:0, successMsg:'The deed is done. The assassins bow. The village is yours at half price.',failMsg:'You botch the job. The assassins demand payment for the trouble — 50g.',successEffect:'buy_discount',failEffect:'lose_gold',failValue:50, discountPrice:30},
+       {text:'Decline and buy at full price (60g)',type:'buy'},
+       {text:'Attack the mayor and seize the town (DM secret: auto-succeed)',type:'dm_secret',dc:8,successMsg:'A brutal choice. The mayor falls. Shadowmoor Village belongs to you.',successEffect:'buy_free'},
+       {text:'Leave without engaging',type:'close'},
+     ]}},
+  // 2 - TREASURE TROVE
+  {id:2, name:'Treasure Trove', type:'community', symbol:'💰', side:'bottom', gridRow:11,gridCol:9,
+   event:{title:'Treasure Trove',story:'You discover a hidden cache of wealth and wonder...',choices:[]}},
+  // 3 - PURPLE
+  {id:3, name:'Duskwood Hamlet', type:'property', color:'purple', price:60, rent:[4,20,60,180,320,450], houseCost:50, side:'bottom', gridRow:11,gridCol:8,
+   event:{title:'The Banshee of Duskwood',story:'As you arrive, the hamlet\'s elder rushes to you, wild-eyed. "It only emerges at night! The banshee haunts these woods since the war. Return at dusk and drive it away — only then will the hamlet be safe... and for sale." The banshee\'s wail can drain your gold, but defeating it grants a sizable bonus.',
+     choices:[
+       {text:'Face the banshee now (DC 12)',type:'combat',dc:12,successMsg:'Your blade sings through the spirit. With a final wail, the banshee dissolves. The hamlet cheers!',failMsg:'The banshee\'s wail tears through you — lose 80g.',successEffect:'buy_discount',discountPrice:30,failEffect:'lose_gold',failValue:80},
+       {text:'Pay to hire a priest to exorcise it (80g, guaranteed buy)',type:'pay_then_buy',cost:80},
+       {text:'Buy the hamlet as-is, banshee included (60g)',type:'buy'},
+       {text:'Leave this haunted place',type:'close'},
+     ]}},
+  // 4 - INCOME TAX
+  {id:4, name:"King's Tribute", type:'tax', taxAmount:200, symbol:'👑', side:'bottom', gridRow:11,gridCol:7,
+   event:{title:"King's Tribute",story:'A royal herald blocks your path, hand outstretched. "By order of the Crown, all travelers must pay tribute." You may pay 200 gold or 10% of your wealth — whichever is less.',choices:[{text:'Pay the tribute',type:'tax'},{text:'Attempt to bribe the herald (DC 14, avoid 50%)',type:'combat',dc:14,successMsg:'The herald pockets your lesser bribe and waves you through. You save half!',failMsg:'The herald reports you. Pay 200g plus a 50g fine!',successEffect:'half_tax',failEffect:'double_tax'}]}},
+  // 5 - RAILROAD
+  {id:5, name:'Desert Caravan Crossing', type:'railroad', price:200, side:'bottom', gridRow:11,gridCol:6, symbol:'🐪',
+   event:{title:'Desert Caravan Crossing',story:'A vast desert trade route stretches before you. The caravan master offers you a controlling stake in the crossing for 200 gold — control enough crossings and travelers will pay handsomely to pass.',choices:[{text:'Purchase the Crossing (200g)',type:'buy'},{text:'Pass through at no charge',type:'close'}]}},
+  // 6 - LIGHT BLUE
+  {id:6, name:'Moonlit Glen', type:'property', color:'light_blue', price:100, rent:[6,30,90,270,400,550], houseCost:50, side:'bottom', gridRow:11,gridCol:5,
+   event:{title:'The Druid\'s Bargain',story:'A druid materializes from the mist, eyes glowing silver. "The glen is out of balance, traveler. Fetch me the sacred herbs from Silverleaf Grove and I shall let you claim this land at a discount. Refuse — and the glen\'s curse falls upon you, making it dearer to purchase."',
+     choices:[
+       {text:'Agree to fetch the herbs (DC 10 skill check)',type:'combat',dc:10,successMsg:'You present the herbs. The druid nods. "The balance is restored." Buy at 50g discount.',failMsg:'You fail to find the herbs. The druid\'s curse strikes — the glen now costs extra.',successEffect:'buy_discount',discountPrice:50,failEffect:'raise_price',failValue:50},
+       {text:'Buy the glen at full price (100g)',type:'buy'},
+       {text:'Accept the curse and leave',type:'close'},
+     ]}},
+  // 7 - CHANCE
+  {id:7, name:"Fate's Whisper", type:'chance', symbol:'🌀', side:'bottom', gridRow:11,gridCol:4,
+   event:{title:"Fate's Whisper",story:'The air shimmers and a voice whispers your destiny...',choices:[]}},
+  // 8 - LIGHT BLUE
+  {id:8, name:'Emerald Vale', type:'property', color:'light_blue', price:100, rent:[6,30,90,270,400,550], houseCost:50, side:'bottom', gridRow:11,gridCol:3,
+   event:{title:'The Guardian\'s Challenge',story:'At the vale\'s entrance, a mystical creature — half sphinx, half stag — blocks your path. "Answer my riddle and the vale is yours at a discount. Fail, and you shall not pass until another has tried." The creature\'s amber eyes bore into you.',
+     choices:[
+       {text:'Accept the riddle challenge (DC 11)',type:'combat',dc:11,successMsg:'"Correct!" The guardian steps aside. "The vale is yours, wise traveler." (50g discount)',failMsg:'You stumble on the answer. "Return when your mind is sharper." You cannot purchase today.',successEffect:'buy_discount',discountPrice:50,failEffect:'block_purchase'},
+       {text:'Offer 120g — above asking, no riddle',type:'buy_fixed',fixedPrice:120},
+       {text:'Leave the guardian\'s challenge',type:'close'},
+     ]}},
+  // 9 - LIGHT BLUE
+  {id:9, name:'Silverleaf Grove', type:'property', color:'light_blue', price:120, rent:[8,40,100,300,450,600], houseCost:50, side:'bottom', gridRow:11,gridCol:2,
+   event:{title:'The Forest Guardian',story:'A fierce treant stands sentinel at the grove entrance, bark-skin gleaming. "This grove provides for all who protect it. Guard it for one full circuit of the realm and it is yours — free. Or offer me tribute." It extends a gnarled hand.',
+     choices:[
+       {text:'Offer tribute — 60g for access (buy at 120g)',type:'buy'},
+       {text:'Fight the guardian for the grove (DC 13)',type:'combat',dc:13,successMsg:'After a fierce struggle, the treant yields. "You are worthy. Take the grove." (Buy at 60g)',failMsg:'The treant hurls you back — lose 90g and forfeit your turn.',successEffect:'buy_discount',discountPrice:60,failEffect:'lose_gold_skip',failValue:90},
+       {text:'Leave the guardian in peace',type:'close'},
+     ]}},
+  // 10 - JAIL
+  {id:10, name:"Guard's Quarters", type:'jail', symbol:'⛓', side:'corner', gridRow:11,gridCol:1,
+   event:{title:"Guard's Quarters",story:'The dungeons loom before you. If you\'re just visiting, relax. If you\'ve been sent here, you\'ll need to roll doubles or pay 50g to escape.',choices:[{text:'Continue',type:'close'}]}},
+  // 11 - PINK
+  {id:11, name:"Dragon's Hollow", type:'property', color:'pink', price:140, rent:[10,50,150,450,625,750], houseCost:100, side:'left', gridRow:10,gridCol:1,
+   event:{title:'The Young Dragon',story:'A young copper dragon, scales gleaming, lounges on a pile of gold in this hollow. One eye opens. "Ah, a visitor. You wish to claim my hollow? Then negotiate — or prove your strength. I\'m bored either way." Smoke curls from its nostrils.',
+     choices:[
+       {text:'Negotiate diplomatically (DC 12 Charisma)',type:'combat',dc:12,successMsg:'"Impressive silver tongue. 100g and it\'s yours." The dragon curls back to sleep.',failMsg:'The dragon laughs and breathes fire. Lose 100g.',successEffect:'buy_fixed',fixedPrice:100,failEffect:'lose_gold',failValue:100},
+       {text:'Challenge it to combat (DC 15)',type:'combat',dc:15,successMsg:'You defeat the dragon! It yields the hollow and its hoard — buy free, gain 50g bonus!',failMsg:'The dragon wins. Lose 120g and retreat.',successEffect:'buy_free_bonus',bonusGold:50,failEffect:'lose_gold',failValue:120},
+       {text:'Pay asking price (140g)',type:'buy'},
+       {text:'Leave the hollow',type:'close'},
+     ]}},
+  // 12 - MAGE'S GUILD
+  {id:12, name:"Mage's Guild", type:'utility', utilityType:'guild', price:150, symbol:'🔮', side:'left', gridRow:9,gridCol:1,
+   event:{title:"Mage's Guild",story:'The guild\'s tower hums with arcane energy. A robed master greets you. "We offer only the finest enchanted equipment to worthy adventurers — for the right price." Purchase the guild and collect tolls from every adventurer who passes through, or simply browse the wares.',choices:[{text:'Purchase the Guild (150g)',type:'buy'},{text:'Browse Equipment only',type:'open_gear_shop'},{text:'Leave',type:'close'}]}},
+  // 13 - PINK
+  {id:13, name:'Stormwatch Tower', type:'property', color:'pink', price:140, rent:[10,50,150,450,625,750], houseCost:100, side:'left', gridRow:8,gridCol:1,
+   event:{title:'The Guardian\'s Riddle',story:'The tower\'s stone guardian awakens at your approach, runes blazing across its body. "Three riddles stand between you and this tower. Answer correctly and it is yours at a discount. Fail all three and a curse follows you." Its voice echoes like thunder.',
+     choices:[
+       {text:'Answer the riddles (DC 11)',type:'combat',dc:11,successMsg:'"Correct on all counts! The tower recognizes your wisdom." Buy at 90g.',failMsg:'"You have failed. A curse follows you." Lose 60g. Cannot purchase today.',successEffect:'buy_fixed',fixedPrice:90,failEffect:'lose_gold_block',failValue:60},
+       {text:'Pay full price and skip the riddles (140g)',type:'buy'},
+       {text:'Leave the tower',type:'close'},
+     ]}},
+  // 14 - PINK
+  {id:14, name:'Glimmerstone Keep', type:'property', color:'pink', price:160, rent:[12,60,180,500,700,900], houseCost:100, side:'left', gridRow:7,gridCol:1,
+   event:{title:'The Hidden Treasure',story:'The keep is famous for a legendary treasure buried within its walls. An old steward meets you. "Pay our treasure hunters and they\'ll find it for you — or search yourself. The treasure might double your gold... or trigger a trap." A twinkle in his eye suggests he knows which it is.',
+     choices:[
+       {text:'Hire treasure hunters (100g + buy at 160g)',type:'pay_then_buy',cost:100},
+       {text:'Search yourself (DC 13, risk/reward)',type:'combat',dc:13,successMsg:'You find the treasure! A cache of 200g and the keep is yours free!',failMsg:'A trap! Lose 100g from the keep\'s defenses.',successEffect:'buy_free_bonus',bonusGold:200,failEffect:'lose_gold',failValue:100},
+       {text:'Buy the keep outright (160g)',type:'buy'},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 15 - RAILROAD
+  {id:15, name:'Forest Caravan Crossing', type:'railroad', price:200, symbol:'🌲', side:'left', gridRow:6,gridCol:1,
+   event:{title:'Forest Caravan Crossing',story:'The great forest road is vital to trade across the realm. Bandits have been harassing the route, making the crossing doubly valuable. The current master offers it to you.',choices:[{text:'Purchase the Crossing (200g)',type:'buy'},{text:'Move on',type:'close'}]}},
+  // 16 - ORANGE
+  {id:16, name:'Crimson Spire', type:'property', color:'orange', price:180, rent:[14,70,200,550,750,950], houseCost:100, side:'left', gridRow:5,gridCol:1,
+   event:{title:'The Stolen Artifact',story:'A mysterious NPC — a tall elf with silver hair — bars your path at the spire\'s gate. "I cannot allow purchase until a matter is resolved. A thief stole the Crimson Amulet and fled to Shadowmoor Village. Return it to me and the spire is yours at half price. Refuse, and you pay full — if I even let you." Their hand rests on a blade.',
+     choices:[
+       {text:'Promise to retrieve the artifact from Shadowmoor (DC 12)',type:'combat',dc:12,successMsg:'"You have retrieved it! My gratitude — and the spire." Buy at 90g.',failMsg:'"You failed me. The full price, then, and quickly." Pay 180g.',successEffect:'buy_fixed',fixedPrice:90,failEffect:'buy'},
+       {text:'Pay full price immediately (180g)',type:'buy'},
+       {text:'Attempt to bluff (DC 15)',type:'combat',dc:15,successMsg:'"...Very well. Take it at half price, and may your word prove true."',failMsg:'"Liar! Pay full price and consider yourself fortunate I don\'t draw steel."',successEffect:'buy_fixed',fixedPrice:90,failEffect:'buy'},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 17 - TREASURE TROVE
+  {id:17, name:'Treasure Trove', type:'community', symbol:'💰', side:'left', gridRow:4,gridCol:1,
+   event:{title:'Treasure Trove',story:'You discover a hidden cache of wealth and wonder...',choices:[]}},
+  // 18 - ORANGE
+  {id:18, name:'Frostwind Borough', type:'property', color:'orange', price:180, rent:[14,70,200,550,750,950], houseCost:100, side:'left', gridRow:3,gridCol:1,
+   event:{title:'The Eternal Winter',story:'The borough is trapped in unnatural frost — flowers of ice bloom on every surface. An ice mage approaches, exhaling frozen breath. "I can free these people if you bring me a Flame Crystal from the Mage\'s Guild — 80g covers the ingredients. Once freed, the borough is yours. Refuse, and anyone landing here loses gold to the cold."',
+     choices:[
+       {text:'Fund the flame crystal ritual (80g + buy at 180g)',type:'pay_then_buy',cost:80},
+       {text:'Buy the frozen borough as-is (140g, cursed discount)',type:'buy_fixed',fixedPrice:140},
+       {text:'Fight the ice mage to end the winter (DC 14)',type:'combat',dc:14,successMsg:'The ice mage falls. The frost shatters. The grateful borough is yours free!',failMsg:'Ice shards tear through you — lose 100g.',successEffect:'buy_free',failEffect:'lose_gold',failValue:100},
+       {text:'Leave the frozen borough',type:'close'},
+     ]}},
+  // 19 - ORANGE (Azure Bay)
+  {id:19, name:'Azure Bay', type:'property', color:'orange', price:200, rent:[16,80,220,600,800,1000], houseCost:100, side:'left', gridRow:2,gridCol:1,
+   event:{title:'The Mayor\'s Request',story:'As you arrive at the gleaming port of Azure Bay, a massive figure blocks the dock — a Hagrid-like mayor, beard full of sea-birds. "Traveler! I have need of your blade. A ghoul haunts the lower docks. Slay it and I\'ll deed you the bay. Refuse..." he lowers his voice, "...you could always find other ways to claim leadership of this town. The mayoralty, for instance, has... vacancies." He winks slowly.',
+     choices:[
+       {text:'Slay the ghoul (DC 12)',type:'combat',dc:12,successMsg:'The ghoul dissolves into black smoke. The mayor throws his arms wide. "HERO! Azure Bay is YOURS!"',failMsg:'The ghoul overpowers you. Retreat — lose 80g.',successEffect:'buy_free',failEffect:'lose_gold',failValue:80},
+       {text:'Buy the bay outright (200g)',type:'buy'},
+       {text:'Challenge the mayor (DM secret — kill him, take the town free)',type:'dm_secret',dc:10,successMsg:'It was a short fight. The town watch looks the other way. Azure Bay is yours.',successEffect:'buy_free'},
+       {text:'Pass on Azure Bay',type:'close'},
+     ]}},
+  // 20 - FREE PARKING
+  {id:20, name:'Safe Haven', type:'free_parking', symbol:'⛺', side:'corner', gridRow:1,gridCol:1,
+   event:{title:'Safe Haven',story:'A rare peace. No tolls, no monsters, no quests. Rest here — safe from harm. Taxes and fines accumulate here; the next player to land collects the pot!',choices:[{text:'Rest and continue',type:'close'}]}},
+  // 21 - RED
+  {id:21, name:'Ironclad Fortress', type:'property', color:'red', price:220, rent:[18,90,250,700,875,1050], houseCost:150, side:'top', gridRow:1,gridCol:2,
+   event:{title:'The Fortress Contract',story:'The fortress commander, a scarred dwarf, greets you at the gates. "The walls are weakened from the last siege. Invest 100g in repairs and the fortress becomes worth more — and yours for the asking. Refuse, and it remains vulnerable — cheaper, but any attack costs you later."',
+     choices:[
+       {text:'Fund repairs (100g) + buy at 220g',type:'pay_then_buy',cost:100},
+       {text:'Buy the weakened fortress at a discount (160g)',type:'buy_fixed',fixedPrice:160},
+       {text:'Seize it by force (DC 15)',type:'combat',dc:15,successMsg:'Your forces overwhelm the garrison. The fortress falls — and is yours free!',failMsg:'The garrison holds. You retreat, 130g lighter.',successEffect:'buy_free',failEffect:'lose_gold',failValue:130},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 22 - CHANCE
+  {id:22, name:"Fate's Whisper", type:'chance', symbol:'🌀', side:'top', gridRow:1,gridCol:3,
+   event:{title:"Fate's Whisper",story:'The air shimmers and a voice whispers your destiny...',choices:[]}},
+  // 23 - RED
+  {id:23, name:'Hollowfen Citadel', type:'property', color:'red', price:220, rent:[18,90,250,700,875,1050], houseCost:150, side:'top', gridRow:1,gridCol:4,
+   event:{title:'The Rival Factions',story:'Two armed factions face each other across the citadel courtyard, frozen in standoff. A courier rushes to you: "Both factions will deed the citadel to whoever breaks the deadlock!" You could ally with one, adjudicate peace, or simply wait them out.',
+     choices:[
+       {text:'Ally with the stronger faction (DC 11 Persuasion)',type:'combat',dc:11,successMsg:'Your endorsement tips the balance. The winning faction hands you the deed. Buy at 150g.',failMsg:'Your chosen faction loses the standoff. You\'re caught in the crossfire — lose 90g.',successEffect:'buy_fixed',fixedPrice:150,failEffect:'lose_gold',failValue:90},
+       {text:'Adjudicate peace (DC 14 Diplomacy)',type:'combat',dc:14,successMsg:'Both factions bow. "A worthy neutral party." They share the deed with you — buy free!',failMsg:'Peace talks collapse into fighting. Lose 80g escaping.',successEffect:'buy_free',failEffect:'lose_gold',failValue:80},
+       {text:'Buy the citadel at full price (220g)',type:'buy'},
+       {text:'Leave them to it',type:'close'},
+     ]}},
+  // 24 - RED
+  {id:24, name:'Brightwood Hold', type:'property', color:'red', price:240, rent:[20,100,300,750,925,1100], houseCost:150, side:'top', gridRow:1,gridCol:5,
+   event:{title:'The Goblin Horde',story:'A knight in battered silver armor meets you on the road. "Thank the gods! A goblin horde approaches the hold. Fight at my side and you shall have the deed once we repel them. Should you fall, well — the goblins take the hold and you pay in blood." The horns sound in the distance.',
+     choices:[
+       {text:'Stand and fight (DC 13)',type:'combat',dc:13,successMsg:'"Brilliant! The goblins flee!" The knight claps you on the shoulder. "The hold is yours, friend."',failMsg:'The goblins break through. Lose 120g and your turn in the chaos.',successEffect:'buy_free',failEffect:'lose_gold_skip',failValue:120},
+       {text:'Pay the knight to handle it (120g) + buy at 240g',type:'pay_then_buy',cost:120},
+       {text:'Buy the hold outright before the attack (240g)',type:'buy'},
+       {text:'Retreat',type:'close'},
+     ]}},
+  // 25 - RAILROAD
+  {id:25, name:'Mountain Caravan Crossing', type:'railroad', price:200, symbol:'⛰', side:'top', gridRow:1,gridCol:6,
+   event:{title:'Mountain Caravan Crossing',story:'High in the peaks, this crossing controls all trade between the northern and southern realms. Whoever controls it gains steady income from every merchant who dares the pass.',choices:[{text:'Purchase the Crossing (200g)',type:'buy'},{text:'Continue on',type:'close'}]}},
+  // 26 - YELLOW
+  {id:26, name:'Golden Harbor', type:'property', color:'yellow', price:260, rent:[22,110,330,800,975,1150], houseCost:150, side:'top', gridRow:1,gridCol:7,
+   event:{title:'Pirates at the Harbor',story:'You arrive to find the harbor under siege! A pirate fleet blockades the port. The harbormaster waves from the docks: "Drive them off or join them!" A choice that will define your reputation in the realm.',
+     choices:[
+       {text:'Defend the harbor (DC 13)',type:'combat',dc:13,successMsg:'"The pirates break!" The harbormaster embraces you. "The harbor is yours, hero. At a token price — 130g."',failMsg:'The pirates repel you. Lose 100g. The harbor remains contested.',successEffect:'buy_fixed',fixedPrice:130,failEffect:'lose_gold',failValue:100},
+       {text:'Join the pirates — share in their loot (gain 150g, can\'t buy)',type:'gain_gold',gainValue:150},
+       {text:'Buy the harbor at full price (260g)',type:'buy'},
+       {text:'Leave the chaos',type:'close'},
+     ]}},
+  // 27 - YELLOW
+  {id:27, name:'Whisperwind Abbey', type:'property', color:'yellow', price:260, rent:[22,110,330,800,975,1150], houseCost:150, side:'top', gridRow:1,gridCol:8,
+   event:{title:'The Secretive Monks',story:'The abbey radiates serenity — but the monks inside are famously secretive. A novice approaches. "A donation of 80g reveals the abbey\'s secrets, granting you the right to purchase. Or..." they lower their eyes, "...you may try to slip past the wards. The monks have not always been merciful to trespassers."',
+     choices:[
+       {text:'Donate to the monks (80g) + buy at 260g',type:'pay_then_buy',cost:80},
+       {text:'Sneak past the wards (DC 14)',type:'combat',dc:14,successMsg:'You move like shadow through the abbey. The deed is in your hands before dawn.',failMsg:'A ward triggers. The monks are not pleased. Lose 100g.',successEffect:'buy_free',failEffect:'lose_gold',failValue:100},
+       {text:'Buy the abbey honestly (260g)',type:'buy'},
+       {text:'Leave the monks in peace',type:'close'},
+     ]}},
+  // 28 - POTION SHOP
+  {id:28, name:'Potion Shop', type:'utility', utilityType:'potions', price:150, symbol:'⚗', side:'top', gridRow:1,gridCol:9,
+   event:{title:'The Potion Shop',story:'Bubbling cauldrons and glowing vials fill every shelf. The alchemist grins over thick spectacles. "Every potion is unique, dearie — effects guaranteed, though perhaps not what you expected." Own this shop and collect a dice-based toll from every visitor.',choices:[{text:'Purchase the Shop (150g)',type:'buy'},{text:'Browse Potions (200g each)',type:'open_potion_shop'},{text:'Leave',type:'close'}]}},
+  // 29 - YELLOW
+  {id:29, name:'Sunfire Plaza', type:'property', color:'yellow', price:280, rent:[24,120,360,850,1025,1200], houseCost:150, side:'top', gridRow:1,gridCol:10,
+   event:{title:'The Grand Festival',story:'The plaza erupts with color and music — a grand festival is underway! The plaza master beckons. "Champion our festival games and win the plaza at a discount. Or perhaps you\'d prefer to browse the rare goods on sale — items that could change the course of your journey."',
+     choices:[
+       {text:'Compete in the festival games (DC 11)',type:'combat',dc:11,successMsg:'"CHAMPION!" A golden wreath on your head and the deed in your hand. Buy at 140g!',failMsg:'A valiant effort — the crowd cheers anyway. You may still buy at full price.',successEffect:'buy_fixed',fixedPrice:140,failEffect:'buy'},
+       {text:'Buy the plaza directly (280g)',type:'buy'},
+       {text:'Browse rare goods at the festival (visit shop)',type:'open_gear_shop'},
+       {text:'Enjoy the festival and move on',type:'close'},
+     ]}},
+  // 30 - GO TO JAIL
+  {id:30, name:"Fate's Judgement", type:'go_to_jail', symbol:'⚖', side:'corner', gridRow:1,gridCol:11,
+   event:{title:"Fate's Judgement",story:'The ground opens beneath you! Dark hands drag you toward the Dungeon Keep. No arguments, no appeals — your fate is sealed.',choices:[{text:'Accept your fate',type:'goto_jail'}]}},
+  // 31 - GREEN
+  {id:31, name:'Oceanus Citadel', type:'property', color:'green', price:300, rent:[26,130,390,900,1100,1275], houseCost:200, side:'right', gridRow:2,gridCol:11,
+   event:{title:'The Sea Monster',story:'The citadel guards are panic-stricken. "A sea monster terrorizes the harbor — trade has collapsed!" A naval officer salutes. "Fund a fleet to hunt it (200g) or take it on yourself. Drive it off and the citadel\'s value — and our gratitude — is yours."',
+     choices:[
+       {text:'Fund the hunting fleet (200g) + buy at 300g',type:'pay_then_buy',cost:200},
+       {text:'Fight the sea monster personally (DC 15)',type:'combat',dc:15,successMsg:'You slay the beast and haul in a 200g bounty! The citadel is yours free!',failMsg:'The monster nearly drowns you — lose 150g.',successEffect:'buy_free_bonus',bonusGold:200,failEffect:'lose_gold',failValue:150},
+       {text:'Buy the troubled citadel (300g)',type:'buy'},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 32 - GREEN
+  {id:32, name:'Thornmere Keep', type:'property', color:'green', price:300, rent:[26,130,390,900,1100,1275], houseCost:200, side:'right', gridRow:3,gridCol:11,
+   event:{title:'The Rival Siege',story:'Two noble houses lay siege to the keep simultaneously, each convinced they have rightful claim. An elderly steward slips you a note: "Settle this and the keep is yours." Three ways to end a siege: diplomacy, force, or treachery.',
+     choices:[
+       {text:'Diplomatically broker a settlement (DC 14)',type:'combat',dc:14,successMsg:'"Masterful! Both houses concede to your authority." Buy at 150g.',failMsg:'Negotiations collapse. Caught in crossfire — lose 120g.',successEffect:'buy_fixed',fixedPrice:150,failEffect:'lose_gold',failValue:120},
+       {text:'Drive both armies off (DC 16)',type:'combat',dc:16,successMsg:'You route both armies! The stunned steward hands you the deed. Free!',failMsg:'You are overwhelmed. Lose 150g.',successEffect:'buy_free',failEffect:'lose_gold',failValue:150},
+       {text:'Buy the embattled keep outright (300g)',type:'buy'},
+       {text:'Leave them to their quarrel',type:'close'},
+     ]}},
+  // 33 - TREASURE TROVE
+  {id:33, name:'Treasure Trove', type:'community', symbol:'💰', side:'right', gridRow:4,gridCol:11,
+   event:{title:'Treasure Trove',story:'You discover a hidden cache of wealth and wonder...',choices:[]}},
+  // 34 - GREEN
+  {id:34, name:'Crownsgate', type:'property', color:'green', price:320, rent:[28,150,450,1000,1200,1400], houseCost:200, side:'right', gridRow:5,gridCol:11,
+   event:{title:'The City Council',story:'Crownsgate\'s legendary council convenes in golden session. "We do not simply sell this city," the chief councilor declares. "You must earn our favor." Five tasks are listed on a scroll. Complete enough and the city is yours — at a price commensurate with your effort.',
+     choices:[
+       {text:'Complete one task (DC 11) — buy at 250g',type:'combat',dc:11,successMsg:'"One task complete. Sufficient." The council stamps your deed. 250g.',failMsg:'"Unsatisfactory." The council adjourns. Cannot purchase today.',successEffect:'buy_fixed',fixedPrice:250,failEffect:'block_purchase'},
+       {text:'Complete three tasks (DC 14) — buy at 160g',type:'combat',dc:14,successMsg:'"Remarkable achievement! The city is yours at generous terms." 160g.',failMsg:'"Too difficult? Perhaps return when you\'re stronger." Lose 80g in wasted effort.',successEffect:'buy_fixed',fixedPrice:160,failEffect:'lose_gold',failValue:80},
+       {text:'Buy without the council\'s favor (320g, full price)',type:'buy'},
+       {text:'Leave',type:'close'},
+     ]}},
+  // 35 - RAILROAD
+  {id:35, name:'Coastal Caravan Crossing', type:'railroad', price:200, symbol:'⚓', side:'right', gridRow:6,gridCol:11,
+   event:{title:'Coastal Caravan Crossing',story:'This coastal route connects the realm\'s greatest ports. Pirates regularly target it, making its owner both wealthy and perpetually busy. The current master, tired of the fighting, is selling.',choices:[{text:'Purchase the Crossing (200g)',type:'buy'},{text:'Continue your journey',type:'close'}]}},
+  // 36 - CHANCE
+  {id:36, name:"Fate's Whisper", type:'chance', symbol:'🌀', side:'right', gridRow:7,gridCol:11,
+   event:{title:"Fate's Whisper",story:'The air shimmers and a voice whispers your destiny...',choices:[]}},
+  // 37 - DARK BLUE
+  {id:37, name:"King's Landing", type:'property', color:'dark_blue', price:350, rent:[35,175,500,1100,1300,1500], houseCost:200, side:'right', gridRow:8,gridCol:11,
+   event:{title:'The King\'s Trial',story:'You are summoned before the king himself, who eyes you with interest. "Many have desired this city. Few have proved worthy. I offer a quest: recover the Royal Scepter from the ruins three tiles hence. Return it and the Landing is yours — with a title." He leans forward. "Or challenge my champion."',
+     choices:[
+       {text:'Accept the royal quest (DC 13)',type:'combat',dc:13,successMsg:'"You have the scepter! Rise, Sir Adventurer. King\'s Landing is your domain." Buy at 175g.',failMsg:'"A disappointment. Pay tribute for wasting the court\'s time." Lose 150g.',successEffect:'buy_fixed',fixedPrice:175,failEffect:'lose_gold',failValue:150},
+       {text:'Challenge the king\'s champion (DC 16)',type:'combat',dc:16,successMsg:'"Extraordinary! Not in a decade has my champion fallen. Take the city — free!" +100g bonus.',failMsg:'"Soundly defeated. Pay 200g in court fines and healing."',successEffect:'buy_free_bonus',bonusGold:100,failEffect:'lose_gold',failValue:200},
+       {text:'Buy the city outright (350g)',type:'buy'},
+       {text:'Decline the king\'s invitation',type:'close'},
+     ]}},
+  // 38 - LUXURY TAX
+  {id:38, name:"Noble's Levy", type:'tax', taxAmount:100, symbol:'💎', side:'right', gridRow:9,gridCol:11,
+   event:{title:"Noble's Levy",story:'A perfumed tax collector in velvet robes demands payment. "100 gold, if you please. The nobility must be maintained." You could pay — or try your luck.',choices:[{text:'Pay the Levy (100g)',type:'tax'},{text:'Attempt to bribe the collector (DC 12)',type:'combat',dc:12,successMsg:'"A reasonable counter-offer." He pockets your 50g and departs.',failMsg:'"GUARDS!" Fine doubled — pay 200g.',successEffect:'half_tax',failEffect:'double_tax'}]}},
+  // 39 - DARK BLUE
+  {id:39, name:'Highspire City', type:'property', color:'dark_blue', price:400, rent:[50,200,600,1400,1700,2000], houseCost:200, side:'right', gridRow:10,gridCol:11,
+   event:{title:'The Merchant Prince',story:'Highspire City — the crown jewel of the realm — glitters above you. A merchant prince in silk robes meets you at the gate. "Investment opportunity of a lifetime. Stake 200g with me — I\'ll double it. Then buy the city." His smile doesn\'t quite reach his eyes. Could be a swindler. Could be legitimate.',
+     choices:[
+       {text:'Invest with the merchant (200g, DC 10 to detect fraud)',type:'gamble_invest',investAmount:200},
+       {text:'Buy Highspire outright (400g)',type:'buy'},
+       {text:'Investigate the merchant first (DC 13)',type:'combat',dc:13,successMsg:'"You caught my bluff. Very well — I\'ll sell you the city at 300g to avoid scandal."',failMsg:'"Satisfied? Good. 400g, then." You find nothing suspicious.',successEffect:'buy_fixed',fixedPrice:300,failEffect:'buy'},
+       {text:'The city can wait',type:'close'},
+     ]}},
+];
+
+// ═══════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════
+let G = {
+  players: [],
+  currentIdx: 0,
+  phase: 'setup',
+  tileOwners: {},      // tileId -> playerIdx
+  tilePrices: {},      // tileId -> current price (can be modified by events)
+  deckFates: [],
+  deckTreasure: [],
+  freeParking: 0,      // gold accumulated at free parking
+  turnPhase: 'roll',   // 'roll' | 'action' | 'end'
+  doublesCount: 0,
+  doublesPending: false,
+  mortgaged: {},
+  actionPending: null,
+};
+
+// ═══════════════════════════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════════════════════════
+let setupPlayerCount = 3;
+let setupPlayers = [
+  {name:'Aragorn', color:0, tokenIdx:0},
+  {name:'Gandalf', color:1, tokenIdx:1},
+  {name:'Legolas', color:2, tokenIdx:2},
+  {name:'Gimli',   color:3, tokenIdx:3},
+];
+let _lobbyTokenIdx = 0;
+
+function setPlayerCount(n){
+  setupPlayerCount = n;
+  document.querySelectorAll('.count-btn').forEach((b,i)=>b.classList.toggle('active', i+2===n));
+  renderSetupRows();
+}
+
+function renderSetupRows(){
+  const c = document.getElementById('player-setup-rows');
+  c.innerHTML = '';
+  for(let i=0;i<4;i++){
+    const active = i < setupPlayerCount;
+    const p = setupPlayers[i];
+    const takenTokens = setupPlayers.filter((_,j)=>j!==i && j<setupPlayerCount).map(sp=>sp.tokenIdx);
+    c.innerHTML += `
+    <div class="player-row ${active?'':'inactive'}" id="prow-${i}">
+      <label>Player ${i+1}</label>
+      <input type="text" id="pname-${i}" value="${p.name}" placeholder="Name" ${active?'':'disabled'}>
+      <div class="color-pick" id="cpick-${i}">
+        ${PLAYER_COLORS.map((col,ci)=>`<div class="color-dot ${p.color===ci?'selected':''}" style="background:${col}" onclick="setColor(${i},${ci})"></div>`).join('')}
+      </div>
+      <div class="token-picker" id="tpick-${i}">
+        ${TOKEN_TYPES.map((t,ti)=>`<button class="token-pick-btn ${p.tokenIdx===ti?'selected':''} ${active&&takenTokens.includes(ti)&&p.tokenIdx!==ti?'taken':''}" onclick="setToken(${i},${ti})" title="${t.name}">${t.emoji}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+}
+
+function setColor(playerIdx, colorIdx){
+  setupPlayers[playerIdx].color = colorIdx;
+  renderSetupRows();
+}
+
+function setToken(playerIdx, tokenIdx){
+  // Swap if another active player already has this token
+  for(let j=0;j<setupPlayerCount;j++){
+    if(j!==playerIdx && setupPlayers[j].tokenIdx===tokenIdx){
+      setupPlayers[j].tokenIdx = setupPlayers[playerIdx].tokenIdx;
+    }
+  }
+  setupPlayers[playerIdx].tokenIdx = tokenIdx;
+  renderSetupRows();
+}
+
+function initLobbyTokenPicker(){
+  const picker = document.getElementById('lobby-token-picker');
+  if(!picker) return;
+  picker.innerHTML = TOKEN_TYPES.map((t,i)=>`<button class="token-pick-btn ${i===_lobbyTokenIdx?'selected':''}" onclick="setLobbyToken(${i})" title="${t.name}">${t.emoji}</button>`).join('');
+}
+
+function setLobbyToken(idx){
+  _lobbyTokenIdx = idx;
+  initLobbyTokenPicker();
+}
+
+function startGame(){
+  G.players = [];
+  for(let i=0;i<setupPlayerCount;i++){
+    const nameEl = document.getElementById(`pname-${i}`);
+    G.players.push({
+      idx: i,
+      name: nameEl ? nameEl.value || `Player ${i+1}` : `Player ${i+1}`,
+      color: PLAYER_COLORS[setupPlayers[i].color],
+      tokenIdx: setupPlayers[i].tokenIdx ?? i,
+      gold: 2000,
+      pos: 0,
+      gear: null,
+      potions: [],
+      inJail: false,
+      jailTurns: 0,
+      skipTurns: 0,
+      curse: 0,
+      curseAmount: 0,
+      bankrupt: false,
+    });
+  }
+  G.tileOwners = {};
+  G.buildings = {};
+  G.tilePrices = {};
+  TILES.forEach(t=>{ if(t.price) G.tilePrices[t.id]=t.price; });
+  G.deckFates = shuffle([...FATES_WHISPER]);
+  G.deckTreasure = shuffle([...TREASURE_TROVE]);
+  G.freeParking = 0;
+  G.currentIdx = 0;
+  G.doublesCount = 0;
+  G.doublesPending = false;
+  G.mortgaged = {};
+  G.phase = 'playing';
+  G.turnPhase = 'roll';
+  G.currentEvent = null;
+  G.log = [];
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  buildBoard();
+  buildCenterArt();
+  renderPlayerCards();
+  renderTokens();
+  startTurn();
+  log('⚔ The quest begins! May fortune favor the bold.','highlight');
+}
+
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// CENTER BOARD ART (SVG fantasy realm map)
+// ═══════════════════════════════════════════════════════════
+function buildCenterArt(){
+  const el = document.getElementById('center-art');
+  if(!el) return;
+  // Generate star field
+  const stars = [...Array(50)].map((_,i)=>{
+    const x=(i*137+70)%488+6, y=(i*97+20)%160+5, r=i%4===0?1.3:i%3===0?0.9:0.55;
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity="${0.25+i%6*0.08}"/>`;
+  }).join('');
+  // Mountain range
+  const mtns=[{x:55,y:215,w:85,h:95},{x:120,y:195,w:95,h:115},{x:195,y:180,w:75,h:100},
+    {x:255,y:170,w:100,h:125},{x:340,y:175,w:80,h:110},{x:400,y:160,w:90,h:130},{x:455,y:178,w:75,h:105}];
+  const mtnSVG=mtns.map(m=>`
+    <polygon points="${m.x},${m.y+m.h} ${m.x+m.w/2},${m.y} ${m.x+m.w},${m.y+m.h}" fill="#15102a" opacity="0.85"/>
+    <polygon points="${m.x+m.w/2},${m.y} ${m.x+m.w/2+m.w*0.08},${m.y+m.h*0.17} ${m.x+m.w/2-m.w*0.10},${m.y+m.h*0.17}" fill="#c0b8e0" opacity="0.28"/>`).join('');
+  // Left forest
+  const lForest=[{x:78,y:262,s:1.1},{x:105,y:255,s:1.0},{x:65,y:282,s:0.85},{x:90,y:285,s:0.78},
+    {x:122,y:272,s:1.15},{x:140,y:260,s:0.9},{x:72,y:302,s:0.7},{x:112,y:300,s:0.75},{x:148,y:280,s:1.0}].map(t=>`
+    <polygon points="${t.x},${t.y} ${t.x-19*t.s},${t.y+34*t.s} ${t.x+19*t.s},${t.y+34*t.s}" fill="#18481e"/>
+    <polygon points="${t.x},${t.y+8*t.s} ${t.x-21*t.s},${t.y+39*t.s} ${t.x+21*t.s},${t.y+39*t.s}" fill="#1e5a25" opacity="0.7"/>`).join('');
+  // Right forest
+  const rForest=[{x:375,y:278,s:1.0},{x:408,y:268,s:1.1},{x:440,y:262,s:0.9},{x:425,y:292,s:0.8},
+    {x:458,y:282,s:1.0},{x:392,y:295,s:0.7},{x:445,y:300,s:0.8},{x:470,y:268,s:0.85}].map(t=>`
+    <polygon points="${t.x},${t.y} ${t.x-17*t.s},${t.y+30*t.s} ${t.x+17*t.s},${t.y+30*t.s}" fill="#18481e"/>
+    <polygon points="${t.x},${t.y+7*t.s} ${t.x-19*t.s},${t.y+34*t.s} ${t.x+19*t.s},${t.y+34*t.s}" fill="#1e5525" opacity="0.7"/>`).join('');
+  // Castle merlons
+  const topMerlons=[0,6,12,18,24,30,36,42].map(o=>`<rect x="${213+o}" y="157" width="5" height="9" fill="#14102a" rx="1"/>`).join('');
+  const leftMerlons=[0,6,12,18].map(o=>`<rect x="${163+o}" y="200" width="4" height="8" fill="#14102a" rx="1"/>`).join('');
+  const rightMerlons=[0,6,12,18].map(o=>`<rect x="${285+o}" y="200" width="4" height="8" fill="#14102a" rx="1"/>`).join('');
+  const keepMerlons=[0,6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96].map(o=>`<rect x="${185+o}" y="207" width="4" height="7" fill="#14102a" rx="1"/>`).join('');
+  // Market stall awnings
+  const awning=(n,col,col2)=>[0,8,16,24,32,40].map(x=>`<rect x="${-28+x}" y="-20" width="6" height="9" fill="${x%16===0?col:col2}" rx="1"/>`).join('');
+  el.innerHTML = `
+<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
+  <defs>
+    <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06031a"/>
+      <stop offset="35%" stop-color="#130a36"/>
+      <stop offset="65%" stop-color="#1e1050"/>
+      <stop offset="100%" stop-color="#0c1a30"/>
+    </linearGradient>
+    <radialGradient id="moonG" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d8d0f8" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#9980e8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#5548aa" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="torchR" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff9900" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#ff4400" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blueOrb" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#66aaff" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#2255cc" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="fb2"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="fb5"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="fb10"><feGaussianBlur stdDeviation="10"/></filter>
+  </defs>
+
+  <!-- SKY -->
+  <rect width="500" height="500" fill="url(#skyG)"/>
+  ${stars}
+
+  <!-- Moon -->
+  <circle cx="388" cy="62" r="42" fill="url(#moonG)" filter="url(#fb10)" opacity="0.7"/>
+  <circle cx="388" cy="62" r="20" fill="#dcd4f8" opacity="0.9"/>
+  <circle cx="396" cy="56" r="16" fill="#06031a" opacity="0.88"/>
+
+  <!-- Atmospheric clouds -->
+  <ellipse cx="180" cy="95" rx="130" ry="28" fill="#1a1040" opacity="0.45" filter="url(#fb2)"/>
+  <ellipse cx="340" cy="112" rx="110" ry="22" fill="#130a36" opacity="0.35" filter="url(#fb2)"/>
+  <ellipse cx="90"  cy="82" rx="90"  ry="18" fill="#1e1050" opacity="0.3"  filter="url(#fb2)"/>
+
+  <!-- MOUNTAINS -->
+  ${mtnSVG}
+  <rect x="0" y="230" width="500" height="50" fill="#06031a" opacity="0.22" filter="url(#fb5)"/>
+
+  <!-- GROUND -->
+  <ellipse cx="250" cy="430" rx="290" ry="105" fill="#0d1e0d"/>
+  <rect x="0" y="385" width="500" height="115" fill="#080d08"/>
+
+  <!-- WATERFALL -->
+  <rect x="22" y="168" width="52" height="160" fill="#1a1235" rx="3"/>
+  <rect x="28" y="172" width="40" height="155" fill="#221848" rx="2"/>
+  <rect x="44" y="180" width="13" height="130" fill="#3a7acc" opacity="0.85" rx="5"/>
+  <rect x="49" y="180" width="5"  height="130" fill="#88bfee" opacity="0.55" rx="2"/>
+  <ellipse cx="53" cy="315" rx="30" ry="10" fill="#5599cc" opacity="0.4" filter="url(#fb2)"/>
+  <ellipse cx="55" cy="323" rx="38" ry="12" fill="#2255aa" opacity="0.55"/>
+  <ellipse cx="55" cy="323" rx="28" ry="7"  fill="#4488cc" opacity="0.35"/>
+  <circle cx="48" cy="305" r="2"   fill="#aaddff" opacity="0.75"/>
+  <circle cx="60" cy="298" r="1.5" fill="#aaddff" opacity="0.6"/>
+  <circle cx="42" cy="313" r="1.5" fill="#aaddff" opacity="0.5"/>
+
+  <!-- FORESTS -->
+  ${lForest}
+  <circle cx="88"  cy="270" r="14" fill="#22bb44" opacity="0.05" filter="url(#fb10)"/>
+  <circle cx="118" cy="260" r="11" fill="#22bb44" opacity="0.04" filter="url(#fb10)"/>
+  ${rForest}
+
+  <!-- STONE PATH -->
+  <path d="M250,495 Q238,455 218,425 Q208,408 204,392 Q198,372 218,357 Q234,347 250,342"
+        fill="none" stroke="#5a4a28" stroke-width="24" stroke-linecap="round" opacity="0.85"/>
+  <path d="M250,495 Q238,455 218,425 Q208,408 204,392 Q198,372 218,357 Q234,347 250,342"
+        fill="none" stroke="#8a7848" stroke-width="16" stroke-linecap="round" opacity="0.6"/>
+  <path d="M250,342 Q272,332 292,342 Q315,354 342,374 Q364,388 385,405"
+        fill="none" stroke="#5a4a28" stroke-width="16" stroke-linecap="round" opacity="0.7"/>
+  <path d="M250,342 Q272,332 292,342 Q315,354 342,374 Q364,388 385,405"
+        fill="none" stroke="#8a7848" stroke-width="9" stroke-linecap="round" opacity="0.45"/>
+
+  <!-- ===== CASTLE ===== -->
+  <!-- Shadow -->
+  <ellipse cx="242" cy="302" rx="95" ry="16" fill="#000" opacity="0.45" filter="url(#fb5)"/>
+  <!-- Main keep back -->
+  <rect x="182" y="205" width="116" height="98" fill="#221a3a" rx="2"/>
+  <!-- Main keep front -->
+  <rect x="187" y="212" width="106" height="93" fill="#2e2450"/>
+  <!-- Keep merlons -->
+  ${keepMerlons}
+  <!-- Side towers back -->
+  <rect x="160" y="208" width="34" height="90" fill="#1e1832"/>
+  <rect x="286" y="208" width="34" height="90" fill="#1e1832"/>
+  <!-- Side towers front -->
+  <rect x="163" y="216" width="30" height="82" fill="#2a2045"/>
+  <rect x="287" y="216" width="30" height="82" fill="#2a2045"/>
+  <!-- Tower merlons -->
+  ${leftMerlons}${rightMerlons}
+  <!-- Central tall tower -->
+  <rect x="210" y="158" width="60" height="132" fill="#2a2048" rx="2"/>
+  <rect x="214" y="163" width="52" height="126" fill="#362c58"/>
+  <!-- Top merlons -->
+  ${topMerlons}
+  <!-- Tall tower windows (lit warm) -->
+  <rect x="223" y="178" width="11" height="17" rx="6" fill="#ffcc44" opacity="0.95"/>
+  <rect x="241" y="178" width="11" height="17" rx="6" fill="#ffcc44" opacity="0.9"/>
+  <rect x="259" y="180" width="9"  height="14" rx="5" fill="#ffbb33" opacity="0.8"/>
+  <rect x="223" y="178" width="11" height="17" rx="6" fill="#ff9900" opacity="0.25" filter="url(#fb2)"/>
+  <rect x="241" y="178" width="11" height="17" rx="6" fill="#ff9900" opacity="0.25" filter="url(#fb2)"/>
+  <!-- Keep windows (lit) -->
+  <rect x="200" y="232" width="12" height="18" rx="6" fill="#ffaa22" opacity="0.82"/>
+  <rect x="220" y="230" width="12" height="18" rx="6" fill="#ffcc44" opacity="0.9"/>
+  <rect x="240" y="231" width="12" height="18" rx="6" fill="#ffcc44" opacity="0.88"/>
+  <rect x="260" y="232" width="12" height="18" rx="6" fill="#ffaa22" opacity="0.8"/>
+  <rect x="280" y="234" width="10" height="16" rx="5" fill="#ffaa22" opacity="0.7"/>
+  <!-- Side tower windows -->
+  <rect x="172" y="232" width="9" height="13" rx="5" fill="#ffcc44" opacity="0.72"/>
+  <rect x="172" y="254" width="9" height="13" rx="5" fill="#ffbb33" opacity="0.65"/>
+  <rect x="293" y="232" width="9" height="13" rx="5" fill="#ffcc44" opacity="0.72"/>
+  <rect x="293" y="254" width="9" height="13" rx="5" fill="#ffbb33" opacity="0.65"/>
+  <!-- Window glow halos -->
+  <rect x="220" y="230" width="12" height="18" rx="6" fill="#ff8800" opacity="0.2" filter="url(#fb5)"/>
+  <rect x="240" y="231" width="12" height="18" rx="6" fill="#ff8800" opacity="0.2" filter="url(#fb5)"/>
+  <!-- GATE (arched) -->
+  <rect x="222" y="265" width="38" height="40" fill="#100c20"/>
+  <path d="M222,265 Q241,247 260,265" fill="#100c20"/>
+  <line x1="226" y1="265" x2="226" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="232" y1="265" x2="232" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="238" y1="265" x2="238" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="244" y1="265" x2="244" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="250" y1="265" x2="250" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="256" y1="265" x2="256" y2="305" stroke="#1e1838" stroke-width="2" opacity="0.7"/>
+  <line x1="222" y1="278" x2="260" y2="278" stroke="#1e1838" stroke-width="1.5" opacity="0.6"/>
+  <line x1="222" y1="291" x2="260" y2="291" stroke="#1e1838" stroke-width="1.5" opacity="0.6"/>
+  <!-- Gate torches -->
+  <rect x="214" y="270" width="5" height="14" fill="#4a3a18"/>
+  <circle cx="216" cy="268" r="5" fill="#ff9900" opacity="0.95"/>
+  <circle cx="216" cy="268" r="14" fill="url(#torchR)" filter="url(#fb2)"/>
+  <rect x="263" y="270" width="5" height="14" fill="#4a3a18"/>
+  <circle cx="265" cy="268" r="5" fill="#ff9900" opacity="0.95"/>
+  <circle cx="265" cy="268" r="14" fill="url(#torchR)" filter="url(#fb2)"/>
+  <!-- Flags -->
+  <line x1="240" y1="158" x2="240" y2="130" stroke="#8888aa" stroke-width="2"/>
+  <polygon points="240,130 268,139 240,148" fill="#cc2200" opacity="0.92"/>
+  <line x1="177" y1="202" x2="177" y2="180" stroke="#8888aa" stroke-width="1.5"/>
+  <polygon points="177,180 198,188 177,196" fill="#cc2200" opacity="0.85"/>
+  <line x1="303" y1="202" x2="303" y2="180" stroke="#8888aa" stroke-width="1.5"/>
+  <polygon points="303,180 322,188 303,196" fill="#cc2200" opacity="0.85"/>
+
+  <!-- ===== DRAGON (upper right) ===== -->
+  <g transform="translate(398,90) rotate(-18)" opacity="0.96">
+    <ellipse cx="0"  cy="0"   rx="36" ry="14" fill="#8a1600"/>
+    <ellipse cx="4"  cy="-2"  rx="30" ry="10" fill="#cc2200"/>
+    <ellipse cx="36" cy="-8"  rx="18" ry="12" fill="#aa2000"/>
+    <ellipse cx="39" cy="-10" rx="14" ry="8"  fill="#cc2800"/>
+    <ellipse cx="51" cy="-8"  rx="8"  ry="5"  fill="#aa2000"/>
+    <circle cx="43" cy="-14" r="3"  fill="#ffcc00"/>
+    <circle cx="44" cy="-14" r="1.5" fill="#110000"/>
+    <polygon points="38,-19 35,-31 43,-21" fill="#880000"/>
+    <polygon points="45,-17 43,-28 49,-18" fill="#880000"/>
+    <polygon points="25,-10 22,-21 30,-8" fill="#880000"/>
+    <polygon points="14,-7"  fill="#880000"/>
+    <!-- Wings -->
+    <path d="M-5,-5 Q-32,-42 -58,-22 Q-47,6 -14,12 Z" fill="#7a1500" opacity="0.92"/>
+    <line x1="-5" y1="-5" x2="-38" y2="-38" stroke="#551000" stroke-width="1.2" opacity="0.6"/>
+    <line x1="-5" y1="-5" x2="-48" y2="-24" stroke="#551000" stroke-width="1.2" opacity="0.6"/>
+    <line x1="-5" y1="-5" x2="-52" y2="-10" stroke="#551000" stroke-width="1.2" opacity="0.6"/>
+    <path d="M0,-8 Q-22,-47 -52,-32 Q-43,-8 -10,6 Z" fill="#9a1800" opacity="0.95"/>
+    <line x1="0" y1="-8" x2="-32" y2="-44" stroke="#661000" stroke-width="1.3" opacity="0.7"/>
+    <line x1="0" y1="-8" x2="-44" y2="-32" stroke="#661000" stroke-width="1.3" opacity="0.7"/>
+    <!-- Fire breath -->
+    <path d="M56,-6 Q74,6 85,0 Q74,-9 88,-14 Q73,-5 82,-20 Q67,-7 56,-6" fill="#ff6600" opacity="0.9"/>
+    <path d="M56,-6 Q70,2 77,0 Q70,-6 80,-11" fill="#ffaa00" opacity="0.85"/>
+    <circle cx="78" cy="-6" r="14" fill="#ff4400" opacity="0.15" filter="url(#fb10)"/>
+    <!-- Tail -->
+    <path d="M-30,8 Q-52,22 -62,38" fill="none" stroke="#9a1800" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <!-- Dragon fire sky glow -->
+  <circle cx="472" cy="84" r="35" fill="#ff5500" opacity="0.09" filter="url(#fb10)"/>
+
+  <!-- ===== WIZARD (left) ===== -->
+  <g transform="translate(142,332)" opacity="0.92">
+    <polygon points="0,2 -15,58 15,58"  fill="#4422aa"/>
+    <polygon points="-2,8 -15,58 15,58 2,8" fill="#5533cc"/>
+    <text x="-3" y="38" fill="#aaaaff" font-size="9" opacity="0.65">✦</text>
+    <ellipse cx="0" cy="10" rx="13" ry="10" fill="#5533cc"/>
+    <circle cx="0" cy="-4" r="9" fill="#c8a880"/>
+    <ellipse cx="0" cy="3" rx="5" ry="8" fill="#e8e0d0" opacity="0.75"/>
+    <!-- Hat -->
+    <polygon points="-11,1 11,1 3,-30 -3,-30" fill="#2211aa"/>
+    <ellipse cx="0" cy="1" rx="13" ry="4" fill="#3322cc"/>
+    <text x="-4" y="-12" fill="#ffcc00" font-size="9" opacity="0.9">✦</text>
+    <!-- Staff -->
+    <line x1="15" y1="58" x2="22" y2="-12" stroke="#6a4a20" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="22" cy="-14" r="8"  fill="#4488ff" opacity="0.88"/>
+    <circle cx="22" cy="-14" r="5"  fill="#88aaff" opacity="0.7"/>
+    <circle cx="22" cy="-14" r="18" fill="url(#blueOrb)" filter="url(#fb5)"/>
+    <!-- Outstretched arm with magic bolt -->
+    <line x1="-9" y1="16" x2="-28" y2="6" stroke="#c8a880" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="-31" cy="4" r="7"  fill="#4488ff" opacity="0.65"/>
+    <circle cx="-31" cy="4" r="14" fill="url(#blueOrb)" filter="url(#fb2)"/>
+  </g>
+
+  <!-- ===== KNIGHT ON HORSEBACK (right) ===== -->
+  <g transform="translate(344,348)" opacity="0.92">
+    <!-- Horse -->
+    <ellipse cx="0"  cy="16" rx="30" ry="14" fill="#3a2a1a"/>
+    <ellipse cx="5"  cy="12" rx="25" ry="11" fill="#4a3a22"/>
+    <ellipse cx="30" cy="5"  rx="15" ry="9"  fill="#4a3a22"/>
+    <ellipse cx="38" cy="3"  rx="8"  ry="5"  fill="#3a2a18"/>
+    <circle cx="38" cy="1" r="2" fill="#111"/>
+    <line x1="-16" y1="26" x2="-19" y2="52" stroke="#3a2a18" stroke-width="4.5" stroke-linecap="round"/>
+    <line x1="-5"  y1="27" x2="-6"  y2="54" stroke="#3a2a18" stroke-width="4.5" stroke-linecap="round"/>
+    <line x1="10"  y1="27" x2="12"  y2="54" stroke="#3a2a18" stroke-width="4.5" stroke-linecap="round"/>
+    <line x1="20"  y1="25" x2="25"  y2="52" stroke="#3a2a18" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M-28,16 Q-48,28 -52,44" fill="none" stroke="#3a2a18" stroke-width="5" stroke-linecap="round"/>
+    <!-- Knight body armour -->
+    <rect x="-9" y="-16" width="22" height="26" fill="#6a6a90" rx="2"/>
+    <rect x="-7" y="-14" width="18" height="23" fill="#8888b0" rx="2"/>
+    <!-- Helmet -->
+    <ellipse cx="7"  cy="-23" rx="11" ry="12" fill="#8888b0"/>
+    <rect x="-1"  y="-26" width="18" height="5" fill="#9999c0" rx="1"/>
+    <rect x="3"   y="-23" width="9"  height="4" fill="#2a2a3a" rx="1"/>
+    <!-- Plume -->
+    <path d="M7,-34 Q1,-48 6,-54 Q11,-48 9,-34" fill="#cc2200" opacity="0.92"/>
+    <!-- Lance -->
+    <line x1="13" y1="-16" x2="64" y2="-42" stroke="#6a4a20" stroke-width="3" stroke-linecap="round"/>
+    <polygon points="64,-42 59,-47 68,-40" fill="#cccccc"/>
+    <!-- Shield -->
+    <ellipse cx="-15" cy="-6" rx="11" ry="14" fill="#2244aa"/>
+    <line x1="-15" y1="-20" x2="-15" y2="8"  stroke="#4466cc" stroke-width="1.5" opacity="0.55"/>
+    <line x1="-26" y1="-6" x2="-4"  y2="-6"  stroke="#4466cc" stroke-width="1.5" opacity="0.55"/>
+  </g>
+
+  <!-- ===== MARKET STALLS ===== -->
+  <!-- Stall 1: Potions -->
+  <g transform="translate(168,408)">
+    <rect x="-27" y="-14" width="54" height="30" fill="#2a1a0a" rx="2"/>
+    <rect x="-30" y="-21" width="60" height="9" fill="#cc4422" rx="1"/>
+    ${awning(6,'#cc4422','#ee5533')}
+    <circle cx="-10" cy="-7" r="6" fill="#aa44cc" opacity="0.85"/>
+    <circle cx="2"  cy="-7" r="5" fill="#44aaff" opacity="0.8"/>
+    <circle cx="13" cy="-8" r="5" fill="#44cc44" opacity="0.8"/>
+    <circle cx="-10" cy="-7" r="9" fill="#aa44cc" opacity="0.12" filter="url(#fb2)"/>
+    <text x="0" y="18" text-anchor="middle" fill="#ffcc88" font-size="6.5" font-family="serif">POTIONS</text>
+  </g>
+  <!-- Stall 2: Treasury -->
+  <g transform="translate(250,402)">
+    <rect x="-30" y="-14" width="60" height="32" fill="#1a1a0a" rx="2"/>
+    <rect x="-33" y="-22" width="66" height="10" fill="#226622" rx="1"/>
+    ${awning(6,'#226622','#33aa33')}
+    <rect x="-13" y="-9" width="26" height="18" fill="#6a4a10" rx="2"/>
+    <rect x="-13" y="-9" width="26" height="8"  fill="#8a6820" rx="2"/>
+    <circle cx="0"  cy="-6" r="4"  fill="#ffcc00" opacity="0.95"/>
+    <circle cx="0"  cy="-6" r="8"  fill="#ffaa00" opacity="0.18" filter="url(#fb2)"/>
+    <text x="0" y="22" text-anchor="middle" fill="#aaffaa" font-size="6.5" font-family="serif">TREASURY</text>
+  </g>
+  <!-- Stall 3: Armory -->
+  <g transform="translate(332,408)">
+    <rect x="-27" y="-14" width="54" height="30" fill="#1a0a0a" rx="2"/>
+    <rect x="-30" y="-21" width="60" height="9" fill="#882222" rx="1"/>
+    ${awning(6,'#882222','#aa3333')}
+    <line x1="-14" y1="-11" x2="-14" y2="10" stroke="#cccccc" stroke-width="2.5"/>
+    <polygon points="-14,-11 -17,-4 -11,-4" fill="#cccccc"/>
+    <line x1="0"   y1="-11" x2="0"   y2="10" stroke="#ccaa44" stroke-width="2.5"/>
+    <polygon points="0,-11 -3,-4 3,-4" fill="#ccaa44"/>
+    <line x1="14"  y1="-11" x2="14"  y2="10" stroke="#cccccc" stroke-width="2.5"/>
+    <polygon points="14,-11 11,-4 17,-4" fill="#cccccc"/>
+    <text x="0" y="18" text-anchor="middle" fill="#ffaa88" font-size="6.5" font-family="serif">ARMORY</text>
+  </g>
+
+  <!-- TORCHES along path -->
+  <line x1="198" y1="374" x2="198" y2="412" stroke="#6a4a18" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="198" cy="371" r="6"  fill="#ff9900" opacity="0.97"/>
+  <circle cx="198" cy="371" r="18" fill="url(#torchR)" filter="url(#fb5)"/>
+  <line x1="304" y1="362" x2="304" y2="396" stroke="#6a4a18" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="304" cy="359" r="6"  fill="#ff9900" opacity="0.97"/>
+  <circle cx="304" cy="359" r="18" fill="url(#torchR)" filter="url(#fb5)"/>
+  <line x1="228" y1="346" x2="228" y2="375" stroke="#6a4a18" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="228" cy="343" r="5"  fill="#ff9900" opacity="0.92"/>
+  <circle cx="228" cy="343" r="14" fill="url(#torchR)" filter="url(#fb2)"/>
+
+  <!-- TITLE BANNER -->
+  <rect x="172" y="459" width="156" height="32" fill="#05030f" opacity="0.82" rx="5"/>
+  <rect x="172" y="459" width="156" height="32" fill="none" stroke="#ffd700" stroke-width="1.2" stroke-opacity="0.55" rx="5"/>
+  <text x="250" y="472" text-anchor="middle" font-family="Georgia,serif" font-size="8.5" fill="#ffd700" opacity="0.95" letter-spacing="1.5">⚔ DnDopoly ⚔</text>
+  <text x="250" y="485" text-anchor="middle" font-family="Georgia,serif" font-size="6.5" fill="#d4b870" opacity="0.78" letter-spacing="2.5">REALM OF FORTUNE</text>
+
+  <!-- Moon glow on scene -->
+  <ellipse cx="388" cy="62" rx="100" ry="80" fill="#9980ff" opacity="0.035" filter="url(#fb10)"/>
+
+  <!-- CORNER ORNAMENTS -->
+  <g fill="#ffd700" opacity="0.32">
+    <path d="M8,8 L46,8 L46,14 L14,14 L14,46 L8,46 Z"/>
+    <path d="M492,8 L454,8 L454,14 L486,14 L486,46 L492,46 Z"/>
+    <path d="M492,492 L454,492 L454,486 L486,486 L486,454 L492,454 Z"/>
+    <path d="M8,492 L46,492 L46,486 L14,486 L14,454 L8,454 Z"/>
+  </g>
+</svg>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// BOARD BUILDING
+// ═══════════════════════════════════════════════════════════
+function buildBoard(){
+  const board = document.getElementById('game-board');
+  [...board.querySelectorAll('.tile')].forEach(t=>t.remove());
+
+  TILES.forEach(tile=>{
+    const el = document.createElement('div');
+    el.className = `tile ${tile.side||''}`;
+    el.id = `tile-${tile.id}`;
+    el.style.gridRow = tile.gridRow;
+    el.style.gridColumn = tile.gridCol;
+    el.onclick = ()=>showTileInfo(tile.id);
+
+    const side = tile.side||'';
+
+    if(tile.type==='property'){
+      el.classList.add('prop-tile');
+      el.style.background = COLOR_BG[tile.color]||'#111';
+      const icon = GROUP_ICONS[tile.color]||'🏠';
+      const hex  = COLOR_HEX[tile.color]||'#555';
+      // Color band with icon (faces board center based on side)
+      const band = document.createElement('div');
+      band.className = 'color-band';
+      band.style.background = `linear-gradient(135deg, ${hex}dd, ${hex})`;
+      band.innerHTML = `<span class="band-icon">${icon}</span>`;
+      el.appendChild(band);
+      // Body
+      const body = document.createElement('div');
+      body.className = 'tile-body';
+      body.innerHTML = `<div class="tile-name">${tile.name}</div><div class="tile-price">${tile.price}g</div>`;
+      el.appendChild(body);
+      // 5 building pip slots
+      const pips = document.createElement('div');
+      pips.className = 'build-pips';
+      pips.id = `pips-${tile.id}`;
+      for(let i=0;i<5;i++) pips.innerHTML+=`<div class="build-pip" id="pip-${tile.id}-${i}"></div>`;
+      el.appendChild(pips);
+
+    } else if(tile.type==='railroad'){
+      el.classList.add('railroad-tile');
+      const icon = RAILROAD_ICONS[tile.id]||'🚂';
+      el.innerHTML=`<span class="special-icon">${icon}</span><div class="special-label">${shortName(tile.name)}</div><div class="tile-price" style="font-size:0.38rem;">200g</div>`;
+
+    } else if(tile.type==='utility'){
+      el.classList.add('utility-tile');
+      const icon = tile.utilityType==='guild'?'🔮':'⚗';
+      el.innerHTML=`<span class="special-icon">${icon}</span><div class="special-label">${shortName(tile.name)}</div>`;
+
+    } else if(tile.type==='chance'){
+      el.classList.add('chance-tile');
+      el.innerHTML=`<span class="special-icon">🌀</span><div class="special-label">Fate's Whisper</div>`;
+
+    } else if(tile.type==='community'){
+      el.classList.add('community-tile');
+      el.innerHTML=`<span class="special-icon">💰</span><div class="special-label">Treasure Trove</div>`;
+
+    } else if(tile.type==='tax'){
+      el.classList.add('tax-tile');
+      const icon = tile.taxAmount>=200?'👑':'💎';
+      el.innerHTML=`<span class="special-icon">${icon}</span><div class="special-label">${shortName(tile.name)}</div>`;
+
+    } else if(tile.type==='go'){
+      el.classList.add('corner');
+      el.innerHTML=`<div class="corner-inner"><span class="corner-icon">🏕</span><div class="corner-title">Adventurer's Rest</div><div class="corner-sub">Collect 200g</div></div>`;
+
+    } else if(tile.type==='jail'){
+      el.classList.add('corner');
+      el.style.background='#10140a';
+      el.innerHTML=`<div class="corner-inner" style="justify-content:space-between;padding:8px;">
+        <div style="font-size:0.42rem;color:var(--dim);font-family:'Cinzel',serif;letter-spacing:1px;">JUST VISITING</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span style="font-size:1.6rem;">⛓</span>
+          <div class="corner-title">Guard's Quarters</div>
+        </div>
+        <div style="font-size:0.42rem;color:#ff8888;font-family:'Cinzel',serif;letter-spacing:1px;">DUNGEON KEEP</div>
+      </div>`;
+
+    } else if(tile.type==='free_parking'){
+      el.classList.add('corner');
+      el.innerHTML=`<div class="corner-inner"><span class="corner-icon">⛺</span><div class="corner-title">Safe Haven</div><div class="corner-sub" id="parking-pot-label">Collect the pot!</div></div>`;
+
+    } else if(tile.type==='go_to_jail'){
+      el.classList.add('corner');
+      el.style.background='#1a0808';
+      el.innerHTML=`<div class="corner-inner"><span class="corner-icon">⚖</span><div class="corner-title" style="color:#ff8888;">Fate's Judgement</div><div class="corner-sub">Go to Dungeon!</div></div>`;
+    }
+
+    board.appendChild(el);
+  });
+}
+
+function shortName(name){
+  // Shorten long tile names to fit small tiles
+  return name.replace('Caravan Crossing','Crossing').replace('Adventurer\'s','Adv.');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOKENS
+// ═══════════════════════════════════════════════════════════
+function _tokenOffset(slotIdx){
+  // Arrange up to 6 tokens in a 2x3 grid within a tile
+  const row = Math.floor(slotIdx/2);
+  const col = slotIdx%2;
+  return { dx: 3 + col*14, dy: 3 + row*14 };
+}
+
+function _placeToken(tokenEl, tilePos, playerIdx, stacked=true){
+  const wrapRect = document.querySelector('.board-wrap').getBoundingClientRect();
+  const tileEl = document.getElementById(`tile-${tilePos}`);
+  if(!tileEl||!wrapRect) return;
+  const tr = tileEl.getBoundingClientRect();
+  let slotIdx = 0;
+  if(stacked){
+    const here = G.players.filter(p=>!p.bankrupt && p.pos===tilePos);
+    slotIdx = Math.max(0, here.findIndex(p=>p.idx===playerIdx));
+  }
+  const {dx,dy} = _tokenOffset(slotIdx);
+  tokenEl.style.left = (tr.left - wrapRect.left + dx) + 'px';
+  tokenEl.style.top  = (tr.top  - wrapRect.top  + dy) + 'px';
+}
+
+function renderTokens(){
+  const layer = document.getElementById('token-layer');
+  layer.innerHTML='';
+  G.players.forEach((p,i)=>{
+    if(p.bankrupt) return;
+    const t = TOKEN_TYPES[p.tokenIdx ?? (i % TOKEN_TYPES.length)] || TOKEN_TYPES[i % TOKEN_TYPES.length];
+    const wrap = document.createElement('div');
+    wrap.id = `token-${i}`;
+    wrap.className = 'token-wrap' + (i===G.currentIdx?' active-token':'');
+    wrap.innerHTML = `<div class="token-sprite" title="${p.name} the ${t.name}">${t.emoji}</div>`
+                   + `<div class="token-badge" style="background:${p.color};color:${p.color}"></div>`
+                   + `<div class="token-shadow"></div>`;
+    layer.appendChild(wrap);
+    _placeToken(wrap, p.pos, i, true);
+  });
+}
+
+// Quick snap (jail, remote sync, etc.)
+function moveToken(playerIdx, newPos){
+  const token = document.getElementById(`token-${playerIdx}`);
+  if(!token) return;
+  _placeToken(token, newPos, playerIdx, true);
+}
+
+// Animated step-by-step walk
+async function animateTokenWalk(playerIdx, oldPos, newPos){
+  const token = document.getElementById(`token-${playerIdx}`);
+  if(!token){ return; }
+  token.classList.add('walking');
+  token.classList.remove('active-token');
+
+  // Build tile path (forward around board)
+  const steps=[];
+  let pos=oldPos, guard=0;
+  do{ pos=(pos+1)%40; steps.push(pos); guard++; } while(pos!==newPos && guard<41);
+
+  for(let s=0; s<steps.length; s++){
+    const isLast = s===steps.length-1;
+    _placeToken(token, steps[s], playerIdx, isLast);
+    await sleep(TOKEN_STEP_MS);
+  }
+
+  token.classList.remove('walking');
+  if(playerIdx===G.currentIdx) token.classList.add('active-token');
+}
+
+// ═══════════════════════════════════════════════════════════
+// PLAYER CARDS (sidebar)
+// ═══════════════════════════════════════════════════════════
+function renderPlayerCards(){
+  const c = document.getElementById('player-cards');
+  c.innerHTML = '';
+  G.players.forEach((p,i)=>{
+    if(p.bankrupt) return;
+    const owned = Object.entries(G.tileOwners).filter(([,oi])=>oi===i);
+    const propDots = owned.map(([tid])=>{
+      const tile = TILES[+tid];
+      if(!tile) return '';
+      const col = tile.color ? COLOR_HEX[tile.color] : (tile.type==='railroad'?'#555':'#338');
+      return `<div class="prop-dot" style="background:${col}" title="${tile.name}"></div>`;
+    }).join('');
+
+    const gearTag  = p.gear ? `<span class="tag gear-tag" data-tip="${p.gear.name}\n${p.gear.desc}">⚔ ${p.gear.short}</span>` : '';
+    const potTags  = p.potions.map(pot=>`<span class="tag potion-tag" data-tip="${pot.name}\n${pot.desc}">🧪 ${pot.name.split(' ')[1]||pot.name.split(' ')[0]}</span>`).join('');
+    const jailTag  = p.inJail ? `<span class="tag jail-tag">⛓ Jailed (${p.jailTurns}/3)</span>` : '';
+
+    c.innerHTML += `
+    <div class="player-card" id="pcard-${i}" style="background:${p.color}22;border-color:${p.color}55;cursor:pointer;" onclick="showPlayerInfo(${i})" title="Click to see ${p.name}'s holdings">
+      <div class="player-card-header">
+        <div class="player-token-icon">${(TOKEN_TYPES[p.tokenIdx??i]||TOKEN_TYPES[i%TOKEN_TYPES.length]).emoji}</div>
+        <div class="player-name-label" style="color:${p.color}">${p.name}</div>
+        <div style="margin-left:auto;font-size:0.7rem;color:var(--dim);">👁 holdings</div>
+      </div>
+      <div class="player-gold">${p.gold}g <span>gold</span></div>
+      <div class="player-tags">${gearTag}${potTags}${jailTag}</div>
+      ${owned.length?`<div class="prop-list">${propDots}</div>`:''}
+    </div>`;
+  });
+
+  // highlight active
+  document.querySelectorAll('.player-card').forEach(c=>c.classList.remove('active-turn'));
+  const activePcard = document.getElementById(`pcard-${G.currentIdx}`);
+  if(activePcard) activePcard.classList.add('active-turn');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TURN MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+function startTurn(){
+  _resolvingChoice=false; // reset each turn so new player's choices aren't blocked
+  const p = cur();
+  if(p.skipTurns>0){
+    p.skipTurns--;
+    log(`${p.name} is skipping a turn.`,'danger');
+    endTurn();
+    return;
+  }
+  if(p.curse>0){
+    p.curse--;
+    deductGold(p, p.curseAmount, 'curse damage');
+  }
+  document.getElementById('turn-banner').textContent = `${p.name}'s Turn`;
+  document.getElementById('roll-btn').style.display = '';
+  const jailBtn = document.getElementById('jail-pay-btn');
+  jailBtn.style.display = p.inJail ? '' : 'none';
+  G.turnPhase = 'roll';
+  refreshBuildPanel();
+  updateRollButton();
+}
+
+function cur(){ return G.players[G.currentIdx]; }
+
+async function rollDice(){
+  const p = cur();
+  document.getElementById('roll-btn').disabled=true;
+
+  // Compute final values first so we can reveal them dramatically
+  let d1=randInt(1,6), d2=randInt(1,6);
+  // Boot of the Swift Wind: roll 3 keep best 2
+  if(p.gear?.effect==='move_bonus'){
+    const d3=randInt(1,6);
+    const three=[d1,d2,d3].sort((a,b)=>b-a);
+    d1=three[0]; d2=three[1];
+    log(`${p.name}'s boots grant a bonus die!`);
+  }
+  const doubles = d1===d2;
+  const total = d1+d2;
+
+  // Animated dice roll — flicker random faces while shaking
+  sfxDiceRoll();
+  const d1el=document.getElementById('die1'), d2el=document.getElementById('die2');
+  d1el.classList.add('rolling'); d2el.classList.add('rolling');
+  const flickerInterval = setInterval(()=>{
+    d1el.textContent = DICE_FACES[randInt(0,5)];
+    d2el.textContent = DICE_FACES[randInt(0,5)];
+  }, 75);
+  await sleep(650);
+  clearInterval(flickerInterval);
+  d1el.classList.remove('rolling'); d2el.classList.remove('rolling');
+  d1el.classList.add('landing'); d2el.classList.add('landing');
+  d1el.textContent = DICE_FACES[d1-1];
+  d2el.textContent = DICE_FACES[d2-1];
+  setTimeout(()=>{ d1el.classList.remove('landing'); d2el.classList.remove('landing'); }, 250);
+
+  log(`${p.name} rolls ${d1}+${d2}=${total}${doubles?' 🎲 DOUBLES!':''}`);
+
+  if(p.inJail){
+    if(doubles){
+      p.inJail=false; p.jailTurns=0;
+      log(`${p.name} rolled doubles and escapes the Dungeon Keep!`,'success');
+      await movePlayerBy(p, total);
+    } else {
+      p.jailTurns++;
+      if(p.jailTurns>=3){
+        p.inJail=false; p.jailTurns=0;
+        deductGold(p,50,'jail fine');
+        log(`${p.name} paid 50g to escape after 3 turns.`,'danger');
+        await movePlayerBy(p,total);
+      } else {
+        log(`${p.name} remains jailed. (${p.jailTurns}/3 turns)`,'danger');
+        endTurn();
+        return;
+      }
+    }
+  } else {
+    if(doubles){
+      G.doublesCount++;
+      if(G.doublesCount>=3){
+        log(`${p.name} rolled doubles 3 times — sent to the Dungeon!`,'danger');
+        sendToJail(p);
+        endTurn();
+        return;
+      }
+      G.doublesPending=true; // will roll again AFTER tile actions resolve
+    } else {
+      G.doublesCount=0;
+      G.doublesPending=false;
+    }
+    await movePlayerBy(p, total);
+  }
+  renderPlayerCards();
+  renderTokens();
+}
+
+async function movePlayerBy(p, spaces){
+  const oldPos = p.pos;
+  const newPos = (p.pos + spaces) % 40;
+  // Check pass Go (before updating pos so we can detect wrap)
+  if(newPos < oldPos && !p.inJail){
+    earnGold(p, 200);
+    log(`${p.name} passes Adventurer's Rest — collect 200g!`,'success');
+  }
+  p.pos = newPos;
+  await animateTokenWalk(p.idx, oldPos, newPos); // walks tile-by-tile, no extra sleep needed
+  await landOnTile(p, TILES[newPos]);
+}
+
+// ═══════════════════════════════════════════════════════════
+// LANDING ON TILES
+// ═══════════════════════════════════════════════════════════
+async function landOnTile(p, tile){
+  log(`${p.name} lands on ${tile.name}`);
+  renderPlayerCards();
+
+  if(tile.type==='go'){
+    // already collected 200 passing; if you land exactly, collect again
+    earnGold(p, 200);
+    log(`${p.name} lands exactly on Adventurer's Rest — bonus 200g!`,'success');
+    endTurn();
+
+  } else if(tile.type==='go_to_jail'){
+    showEvent(tile, p, ()=>{
+      sendToJail(p);
+      endTurn();
+    });
+
+  } else if(tile.type==='jail'){
+    log(`${p.name} is just visiting the Guard's Quarters.`);
+    endTurn();
+
+  } else if(tile.type==='free_parking'){
+    const pot = G.freeParking;
+    G.freeParking = 0;
+    if(pot>0){ earnGold(p, pot); log(`${p.name} collects the Safe Haven pot: ${pot}g!`,'success'); }
+    else log(`${p.name} rests at Safe Haven — no pot this time.`);
+    endTurn();
+
+  } else if(tile.type==='chance'){
+    drawFatesWhisper(p);
+
+  } else if(tile.type==='community'){
+    drawTreasureTrove(p);
+
+  } else if(tile.type==='tax'){
+    showEvent(tile, p, ()=>endTurn());
+
+  } else if(tile.type==='property'||tile.type==='railroad'||tile.type==='utility'){
+    const ownedBy = G.tileOwners[t

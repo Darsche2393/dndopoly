@@ -290,8 +290,32 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
 .turn-banner{font-family:'Cinzel',serif;font-size:0.9rem;color:var(--gold);text-align:center;margin-bottom:12px;min-height:20px;}
 .dice-row{display:flex;gap:10px;justify-content:center;margin-bottom:12px;}
 .die{width:48px;height:48px;border-radius:8px;background:linear-gradient(135deg,#252018,#0d0c08);border:2px solid #6a5a30;display:flex;align-items:center;justify-content:center;font-size:1.8rem;transition:transform 0.1s;box-shadow:0 3px 8px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.06);}
-.die.rolling{animation:spin 0.4s ease-out;}
-@keyframes spin{0%{transform:rotate(0)scale(1)}50%{transform:rotate(180deg)scale(1.2)}100%{transform:rotate(360deg)scale(1)}}
+.die.rolling{animation:diceShake 0.65s ease-in-out;}
+@keyframes diceShake{
+  0%  {transform:rotate(-22deg) scale(1.05)}
+  15% {transform:rotate(20deg)  scale(1.25) translateY(-5px)}
+  30% {transform:rotate(-18deg) scale(1.15)}
+  45% {transform:rotate(22deg)  scale(1.3)  translateY(-7px)}
+  60% {transform:rotate(-14deg) scale(1.18)}
+  75% {transform:rotate(16deg)  scale(1.22) translateY(-4px)}
+  90% {transform:rotate(-8deg)  scale(1.1)}
+  100%{transform:rotate(0)      scale(1)}
+}
+.die.landing{animation:diceLand 0.22s ease-out;}
+@keyframes diceLand{0%{transform:scale(1.3)}70%{transform:scale(0.92)}100%{transform:scale(1)}}
+
+/* ===== TOKEN PICKER ===== */
+.token-picker{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px;}
+.token-pick-btn{width:38px;height:38px;border-radius:8px;border:2px solid rgba(255,215,0,0.2);background:rgba(255,255,255,0.05);cursor:pointer;font-size:1.4rem;display:flex;align-items:center;justify-content:center;transition:all 0.15s;line-height:1;}
+.token-pick-btn:hover{border-color:rgba(255,215,0,0.5);background:rgba(255,215,0,0.08);transform:scale(1.12);}
+.token-pick-btn.selected{border-color:var(--gold);background:rgba(255,215,0,0.15);box-shadow:0 0 10px rgba(255,215,0,0.3);}
+.token-pick-btn.taken{opacity:0.35;cursor:not-allowed;}
+.lobby-token-row{margin:12px 0 8px;}
+.lobby-token-label{font-family:'Cinzel',serif;font-size:0.7rem;color:var(--dim);letter-spacing:1.5px;margin-bottom:6px;}
+
+/* ===== FLOATING GOLD ===== */
+.gold-float{position:absolute;font-family:'Cinzel',serif;font-size:0.82rem;font-weight:700;pointer-events:none;z-index:35;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,0.9);animation:floatUp 1.3s ease-out forwards;}
+@keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1;}60%{opacity:1;}100%{transform:translateY(-62px) scale(0.8);opacity:0;}}
 .control-btns{display:flex;gap:8px;flex-direction:column;}
 
 /* ===== GAME LOG ===== */
@@ -439,6 +463,10 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
       <div id="lobby-create-section">
         <h2>JOIN OR CREATE</h2>
         <input id="lobby-name" class="lobby-input" placeholder="Your adventurer name..." maxlength="20">
+        <div class="lobby-token-row">
+          <div class="lobby-token-label">CHOOSE YOUR TOKEN</div>
+          <div class="token-picker" id="lobby-token-picker"></div>
+        </div>
         <button class="btn btn-gold" style="width:100%;padding:13px;font-size:1rem;margin-bottom:14px" onclick="createRoom()">🏰 Create New Room</button>
         <div class="lobby-join-row">
           <input id="join-code-input" class="lobby-input" placeholder="CODE" maxlength="4">
@@ -651,6 +679,21 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
         <select id="dm-potion-select"></select>
         <button class="btn btn-outline btn-sm" onclick="dmGivePotion()">Give</button>
         <button class="btn btn-danger btn-sm" onclick="dmClearPotions()">Clear All</button>
+      </div>
+    </div>
+
+    <div class="dm-section">
+      <h3>🧭 TELEPORT PLAYER</h3>
+      <div class="dm-row">
+        <label>Player</label>
+        <select id="dm-tp-player"></select>
+      </div>
+      <div class="dm-row">
+        <label>Tile #</label>
+        <select id="dm-tp-tile"></select>
+      </div>
+      <div class="dm-row">
+        <button class="btn btn-gold btn-sm" onclick="dmTeleport()">Teleport</button>
       </div>
     </div>
 
@@ -1086,11 +1129,12 @@ let G = {
 // ═══════════════════════════════════════════════════════════
 let setupPlayerCount = 3;
 let setupPlayers = [
-  {name:'Aragorn', color:0},
-  {name:'Gandalf', color:1},
-  {name:'Legolas', color:2},
-  {name:'Gimli',   color:3},
+  {name:'Aragorn', color:0, tokenIdx:0},
+  {name:'Gandalf', color:1, tokenIdx:1},
+  {name:'Legolas', color:2, tokenIdx:2},
+  {name:'Gimli',   color:3, tokenIdx:3},
 ];
+let _lobbyTokenIdx = 0;
 
 function setPlayerCount(n){
   setupPlayerCount = n;
@@ -1104,12 +1148,16 @@ function renderSetupRows(){
   for(let i=0;i<4;i++){
     const active = i < setupPlayerCount;
     const p = setupPlayers[i];
+    const takenTokens = setupPlayers.filter((_,j)=>j!==i && j<setupPlayerCount).map(sp=>sp.tokenIdx);
     c.innerHTML += `
     <div class="player-row ${active?'':'inactive'}" id="prow-${i}">
       <label>Player ${i+1}</label>
       <input type="text" id="pname-${i}" value="${p.name}" placeholder="Name" ${active?'':'disabled'}>
       <div class="color-pick" id="cpick-${i}">
         ${PLAYER_COLORS.map((col,ci)=>`<div class="color-dot ${p.color===ci?'selected':''}" style="background:${col}" onclick="setColor(${i},${ci})"></div>`).join('')}
+      </div>
+      <div class="token-picker" id="tpick-${i}">
+        ${TOKEN_TYPES.map((t,ti)=>`<button class="token-pick-btn ${p.tokenIdx===ti?'selected':''} ${active&&takenTokens.includes(ti)&&p.tokenIdx!==ti?'taken':''}" onclick="setToken(${i},${ti})" title="${t.name}">${t.emoji}</button>`).join('')}
       </div>
     </div>`;
   }
@@ -1120,6 +1168,28 @@ function setColor(playerIdx, colorIdx){
   renderSetupRows();
 }
 
+function setToken(playerIdx, tokenIdx){
+  // Swap if another active player already has this token
+  for(let j=0;j<setupPlayerCount;j++){
+    if(j!==playerIdx && setupPlayers[j].tokenIdx===tokenIdx){
+      setupPlayers[j].tokenIdx = setupPlayers[playerIdx].tokenIdx;
+    }
+  }
+  setupPlayers[playerIdx].tokenIdx = tokenIdx;
+  renderSetupRows();
+}
+
+function initLobbyTokenPicker(){
+  const picker = document.getElementById('lobby-token-picker');
+  if(!picker) return;
+  picker.innerHTML = TOKEN_TYPES.map((t,i)=>`<button class="token-pick-btn ${i===_lobbyTokenIdx?'selected':''}" onclick="setLobbyToken(${i})" title="${t.name}">${t.emoji}</button>`).join('');
+}
+
+function setLobbyToken(idx){
+  _lobbyTokenIdx = idx;
+  initLobbyTokenPicker();
+}
+
 function startGame(){
   G.players = [];
   for(let i=0;i<setupPlayerCount;i++){
@@ -1128,6 +1198,7 @@ function startGame(){
       idx: i,
       name: nameEl ? nameEl.value || `Player ${i+1}` : `Player ${i+1}`,
       color: PLAYER_COLORS[setupPlayers[i].color],
+      tokenIdx: setupPlayers[i].tokenIdx ?? i,
       gold: 2000,
       pos: 0,
       gear: null,
@@ -1626,7 +1697,7 @@ function renderTokens(){
   layer.innerHTML='';
   G.players.forEach((p,i)=>{
     if(p.bankrupt) return;
-    const t = TOKEN_TYPES[i % TOKEN_TYPES.length];
+    const t = TOKEN_TYPES[p.tokenIdx ?? (i % TOKEN_TYPES.length)] || TOKEN_TYPES[i % TOKEN_TYPES.length];
     const wrap = document.createElement('div');
     wrap.id = `token-${i}`;
     wrap.className = 'token-wrap' + (i===G.currentIdx?' active-token':'');
@@ -1690,7 +1761,7 @@ function renderPlayerCards(){
     c.innerHTML += `
     <div class="player-card" id="pcard-${i}" style="background:${p.color}22;border-color:${p.color}55;cursor:pointer;" onclick="showPlayerInfo(${i})" title="Click to see ${p.name}'s holdings">
       <div class="player-card-header">
-        <div class="player-token-icon">${TOKEN_TYPES[i % TOKEN_TYPES.length].emoji}</div>
+        <div class="player-token-icon">${(TOKEN_TYPES[p.tokenIdx??i]||TOKEN_TYPES[i%TOKEN_TYPES.length]).emoji}</div>
         <div class="player-name-label" style="color:${p.color}">${p.name}</div>
         <div style="margin-left:auto;font-size:0.7rem;color:var(--dim);">👁 holdings</div>
       </div>
@@ -1737,13 +1808,7 @@ async function rollDice(){
   const p = cur();
   document.getElementById('roll-btn').disabled=true;
 
-  // Animate dice + sound
-  sfxDiceRoll();
-  const d1el=document.getElementById('die1'), d2el=document.getElementById('die2');
-  d1el.classList.add('rolling'); d2el.classList.add('rolling');
-  await sleep(650);
-  d1el.classList.remove('rolling'); d2el.classList.remove('rolling');
-
+  // Compute final values first so we can reveal them dramatically
   let d1=randInt(1,6), d2=randInt(1,6);
   // Boot of the Swift Wind: roll 3 keep best 2
   if(p.gear?.effect==='move_bonus'){
@@ -1755,8 +1820,21 @@ async function rollDice(){
   const doubles = d1===d2;
   const total = d1+d2;
 
+  // Animated dice roll — flicker random faces while shaking
+  sfxDiceRoll();
+  const d1el=document.getElementById('die1'), d2el=document.getElementById('die2');
+  d1el.classList.add('rolling'); d2el.classList.add('rolling');
+  const flickerInterval = setInterval(()=>{
+    d1el.textContent = DICE_FACES[randInt(0,5)];
+    d2el.textContent = DICE_FACES[randInt(0,5)];
+  }, 75);
+  await sleep(650);
+  clearInterval(flickerInterval);
+  d1el.classList.remove('rolling'); d2el.classList.remove('rolling');
+  d1el.classList.add('landing'); d2el.classList.add('landing');
   d1el.textContent = DICE_FACES[d1-1];
   d2el.textContent = DICE_FACES[d2-1];
+  setTimeout(()=>{ d1el.classList.remove('landing'); d2el.classList.remove('landing'); }, 250);
 
   log(`${p.name} rolls ${d1}+${d2}=${total}${doubles?' 🎲 DOUBLES!':''}`);
 
@@ -1803,7 +1881,7 @@ async function movePlayerBy(p, spaces){
   const newPos = (p.pos + spaces) % 40;
   // Check pass Go (before updating pos so we can detect wrap)
   if(newPos < oldPos && !p.inJail){
-    p.gold += 200;
+    earnGold(p, 200);
     log(`${p.name} passes Adventurer's Rest — collect 200g!`,'success');
   }
   p.pos = newPos;
@@ -1820,7 +1898,7 @@ async function landOnTile(p, tile){
 
   if(tile.type==='go'){
     // already collected 200 passing; if you land exactly, collect again
-    p.gold += 200;
+    earnGold(p, 200);
     log(`${p.name} lands exactly on Adventurer's Rest — bonus 200g!`,'success');
     endTurn();
 
@@ -1837,8 +1915,7 @@ async function landOnTile(p, tile){
   } else if(tile.type==='free_parking'){
     const pot = G.freeParking;
     G.freeParking = 0;
-    p.gold += pot;
-    if(pot>0) log(`${p.name} collects the Safe Haven pot: ${pot}g!`,'success');
+    if(pot>0){ earnGold(p, pot); log(`${p.name} collects the Safe Haven pot: ${pot}g!`,'success'); }
     else log(`${p.name} rests at Safe Haven — no pot this time.`);
     endTurn();
 
@@ -1896,7 +1973,7 @@ async function landOnTile(p, tile){
       showRentToast(p, owner, rent, false);
       log(`${p.name} pays ${rent}g rent to ${owner.name} for ${tile.name}!`,'danger');
       deductGold(p, rent, `rent to ${owner.name}`);
-      owner.gold += rent;
+      earnGold(owner, rent);
       renderPlayerCards();
       checkBankruptcy(p);
       syncStateDebounced();
@@ -2157,7 +2234,7 @@ async function handleChoiceSuccess(ch, tile, player, onDone, resultArea, isCrit=
     G.tileOwners[tile.id]=player.idx; updateTileDisplay(tile.id,player);
     const bonus=(eff==='buy_free_bonus'&&ch.bonusGold?ch.bonusGold:0)+critBonus;
     log(`${player.name} acquires ${tile.name} for FREE!${isCrit?' (CRITICAL BONUS!)':''}`, 'success');
-    if(bonus){ player.gold+=bonus; log(`${player.name} gains ${bonus}g bonus!`,'success'); }
+    if(bonus){ earnGold(player, bonus); log(`${player.name} gains ${bonus}g bonus!`,'success'); }
   } else if(eff==='raise_price'){
     // success on druid quest = discount; already described in successMsg
   }
@@ -2290,7 +2367,7 @@ function applyCardEffect(card, player, deckName, onDone){
   if(card.effect==='gain_gold'){
     let amt=card.value;
     if(card.cost){ deductGold(player,card.cost,'wishing well'); }
-    player.gold+=amt; resultMsg=`You gain ${amt}g!`;
+    earnGold(player, amt); resultMsg=`You gain ${amt}g!`;
     log(`${player.name}: ${card.title} — +${amt}g`,'success');
   } else if(card.effect==='lose_gold'){
     const amt=Math.abs(card.value);
@@ -2310,7 +2387,7 @@ function applyCardEffect(card, player, deckName, onDone){
     return;
   } else if(card.effect==='advance_go'){
     const toGo=40-player.pos;
-    player.gold+=200;
+    earnGold(player, 200);
     resultMsg=`Advance to Go! Collect 200g.`;
     closeCardModal_then(async ()=>{
       await movePlayerBy(player,toGo);
@@ -2319,10 +2396,10 @@ function applyCardEffect(card, player, deckName, onDone){
     return;
   } else if(card.effect==='gamble'){
     const roll=randInt(1,6);
-    if(roll>=4){ player.gold+=150; resultMsg=`Rolled ${roll} — gained 150g!`; }
+    if(roll>=4){ earnGold(player, 150); resultMsg=`Rolled ${roll} — gained 150g!`; }
     else { deductGold(player,100,'gamble'); resultMsg=`Rolled ${roll} — lost 100g.`; }
   } else if(card.effect==='curse_self'){
-    player.gold+=100; player.curse=3; player.curseAmount=25;
+    earnGold(player, 100); player.curse=3; player.curseAmount=25;
     resultMsg=`You gain 100g but are cursed — lose 25g per turn for 3 turns.`;
   } else if(card.effect==='give_potion'){
     if(player.potions.length<2){
@@ -2444,7 +2521,7 @@ function usePotionMenu(){
 }
 
 function applyPotion(player, pot){
-  if(pot.effect==='gain_gold'){ player.gold+=pot.value; log(`${player.name} drinks ${pot.name}: +${pot.value}g!`,'success'); }
+  if(pot.effect==='gain_gold'){ earnGold(player, pot.value); log(`${player.name} drinks ${pot.name}: +${pot.value}g!`,'success'); }
   else if(pot.effect==='lose_gold'){ deductGold(player,Math.abs(pot.value),'cursed potion'); log(`${player.name} suffers a cursed potion: -${Math.abs(pot.value)}g`,'danger'); }
   else if(pot.effect==='negate_rent'){ player.potionBuff='negate_rent'; log(`${player.name} will halve their next rent payment.`,'success'); }
   else if(pot.effect==='extra_turn'){ log(`${player.name} gains an extra turn!`,'success'); }
@@ -3008,9 +3085,37 @@ function endTurn(){
   startTurn(); // startTurn already calls refreshBuildPanel + updateRollButton
 }
 
+// ── Floating gold pop ──────────────────────────────────────
+function floatGold(playerIdx, amount){
+  if(!amount) return;
+  const token = document.getElementById(`token-${playerIdx}`);
+  const layer = document.getElementById('token-layer');
+  if(!token || !layer) return;
+  const el = document.createElement('div');
+  el.className = 'gold-float';
+  el.style.color = amount >= 0 ? '#7aff88' : '#ff7a7a';
+  el.textContent = (amount >= 0 ? '+' : '') + amount + 'g';
+  // Offset slightly so multiple floats don't stack perfectly
+  const jitter = (Math.random()-0.5)*18;
+  el.style.left = (parseInt(token.style.left||0) + 4 + jitter) + 'px';
+  el.style.top  = (parseInt(token.style.top||0) - 8) + 'px';
+  layer.appendChild(el);
+  setTimeout(()=>el.remove(), 1400);
+}
+
+function earnGold(player, amount, reason){
+  if(typeof amount!=='number'||!amount) return;
+  player.gold = (player.gold||0) + amount;
+  floatGold(player.idx, amount);
+  if(reason) log(`${player.name} receives ${amount}g (${reason})`,'success');
+  syncStateDebounced();
+}
+
 function deductGold(player, amount, reason){
   if(typeof amount==='string') return; // guard against bad calls
+  const actual = Math.min(amount, player.gold);
   player.gold=Math.max(0, player.gold-amount);
+  floatGold(player.idx, -actual);
   if(reason) log(`${player.name} pays ${amount}g (${reason})`,'danger');
   checkBankruptcy(player);
   syncStateDebounced();
@@ -3175,13 +3280,14 @@ function openDmPanel(){
   ['dm-gold-player','dm-item-player'].forEach(id=>{
     document.getElementById(id).innerHTML=playerOpts;
   });
-  // Property select
-  const ownedProps=Object.entries(G.tileOwners).map(([id,ownerIdx])=>{
-    const t=TILES[parseInt(id)];
-    return `<option value="${id}">${t.name} (${G.players[ownerIdx].name})</option>`;
+  // Property select — all purchasable tiles, showing owner or Unowned
+  const allProps=TILES.filter(t=>t.type==='property'||t.type==='railroad'||t.type==='utility').map(t=>{
+    const ownerIdx=G.tileOwners[t.id];
+    const ownerLabel=ownerIdx!=null?`→ ${G.players[ownerIdx].name}`:'unowned';
+    return `<option value="${t.id}">${t.name} (${ownerLabel})</option>`;
   });
   document.getElementById('dm-prop-select').innerHTML=
-    `<option value="">— Select —</option>`+ownedProps.join('');
+    `<option value="">— Select —</option>`+allProps.join('');
   document.getElementById('dm-prop-target').innerHTML=playerOpts;
   // Gear select
   document.getElementById('dm-gear-select').innerHTML=
@@ -3190,6 +3296,10 @@ function openDmPanel(){
   // Potion select
   document.getElementById('dm-potion-select').innerHTML=
     POTIONS.map((p,i)=>`<option value="${i}">${p.name}</option>`).join('');
+  // Teleport selects
+  document.getElementById('dm-tp-player').innerHTML=playerOpts;
+  document.getElementById('dm-tp-tile').innerHTML=
+    TILES.map(t=>`<option value="${t.id}">[${t.id}] ${t.name}</option>`).join('');
   document.getElementById('dm-panel-modal').classList.remove('hidden');
 }
 function closeDmPanel(){ document.getElementById('dm-panel-modal').classList.add('hidden'); }
@@ -3200,9 +3310,10 @@ function dmGold(action){
   if(isNaN(amount)||amount<=0){ alert('Enter a valid amount.'); return; }
   const p=G.players[playerIdx];
   if(action==='give'){
-    p.gold+=amount;
+    earnGold(p, amount);
     log(`[DM] ${p.name} receives ${amount}g.`,'highlight');
   } else {
+    floatGold(p.idx, -amount);
     p.gold=Math.max(0,p.gold-amount);
     log(`[DM] ${amount}g removed from ${p.name}.`,'danger');
   }
@@ -3262,6 +3373,18 @@ function dmClearPotions(){
   const p=G.players[playerIdx];
   p.potions=[];
   log(`[DM] ${p.name}'s potions cleared.`,'highlight');
+  renderPlayerCards(); syncState();
+}
+
+async function dmTeleport(){
+  const playerIdx=parseInt(document.getElementById('dm-tp-player').value);
+  const tileId=parseInt(document.getElementById('dm-tp-tile').value);
+  const p=G.players[playerIdx];
+  const oldPos=p.pos;
+  p.pos=tileId;
+  closeDmPanel();
+  log(`[DM] ${p.name} teleported to ${TILES[tileId].name}.`,'highlight');
+  await animateTokenWalk(playerIdx, oldPos, tileId);
   renderPlayerCards(); syncState();
 }
 
@@ -3491,6 +3614,7 @@ function genRoomCode(){
 function showOnlineOptions(){
   document.getElementById('lobby-mode-select').style.display='none';
   document.getElementById('lobby-online-options').style.display='';
+  initLobbyTokenPicker();
 }
 
 function playLocal(){
@@ -3506,7 +3630,7 @@ async function createRoom(){
 
   const initState={
     phase:'lobby',
-    lobbyPlayers:[{name,sessionId:mySessionId,idx:0}],
+    lobbyPlayers:[{name,sessionId:mySessionId,idx:0,tokenIdx:_lobbyTokenIdx}],
     game:null
   };
 
@@ -3540,7 +3664,7 @@ async function joinRoom(){
 
   myPlayerIdx=rs.lobbyPlayers.length;
 
-  const updatedPlayers=[...rs.lobbyPlayers,{name,sessionId:mySessionId,idx:myPlayerIdx}];
+  const updatedPlayers=[...rs.lobbyPlayers,{name,sessionId:mySessionId,idx:myPlayerIdx,tokenIdx:_lobbyTokenIdx}];
   await sb.from('game_rooms').update({state:{...rs,lobbyPlayers:updatedPlayers}}).eq('id',code);
 
   showLobbyWaiting(code,false);
@@ -3561,12 +3685,15 @@ function showLobbyWaiting(code,amHost){
 function renderLobbyPlayers(players){
   const el=document.getElementById('lobby-player-list');
   if(!el)return;
-  el.innerHTML=players.map((p,i)=>`
-    <div class="lobby-player-entry">
+  el.innerHTML=players.map((p,i)=>{
+    const tok=TOKEN_TYPES[p.tokenIdx??i]||TOKEN_TYPES[i%TOKEN_TYPES.length];
+    return `<div class="lobby-player-entry">
+      <span style="font-size:1.3rem;line-height:1">${tok.emoji}</span>
       <div class="lobby-player-dot" style="background:${PLAYER_COLORS[i]}"></div>
       <span style="font-family:'Cinzel',serif;font-size:0.9rem">${p.name}</span>
       ${i===0?'<span style="color:var(--gold);font-size:0.75rem;margin-left:auto;font-family:Cinzel,serif">HOST</span>':''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function subscribeToRoom(){
@@ -3696,7 +3823,8 @@ async function hostStartGame(){
 
   G.players=lobbyPlayers.map((p,i)=>({
     idx:i, name:p.name, sessionId:p.sessionId,
-    color:PLAYER_COLORS[i], gold:2000, pos:0,
+    color:PLAYER_COLORS[i], tokenIdx:p.tokenIdx??i,
+    gold:2000, pos:0,
     gear:null, potions:[], inJail:false, jailTurns:0,
     skipTurns:0, curse:0, curseAmount:0, bankrupt:false,
   }));
