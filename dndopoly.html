@@ -260,8 +260,26 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
 .modal-choices{display:flex;flex-direction:column;gap:10px;}
 .choice-btn{padding:12px 18px;border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.05);border-radius:8px;cursor:pointer;color:var(--text);font-family:'Crimson Text',serif;font-size:1rem;text-align:left;transition:all 0.2s;line-height:1.4;}
 .choice-btn:hover{background:rgba(255,215,0,0.15);border-color:var(--gold);transform:translateX(4px);}
+.choice-btn.choice-selected{border-color:var(--gold);background:rgba(255,215,0,0.13);transform:translateX(4px);}
 .choice-btn .choice-cost{display:block;font-size:0.75rem;color:var(--dim);margin-top:3px;}
 .choice-btn .choice-risk{display:block;font-size:0.7rem;color:#ff9944;margin-top:2px;}
+#choice-confirm-bar{display:flex;gap:10px;margin-top:6px;justify-content:center;padding:10px 0 2px;}
+/* Admin/DM panel */
+#dm-panel-modal .modal-box{max-width:520px;}
+.dm-section{margin-bottom:18px;}
+.dm-section h3{font-family:'Cinzel',serif;font-size:0.8rem;color:var(--gold);letter-spacing:2px;margin-bottom:10px;}
+.dm-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.dm-row label{font-size:0.8rem;color:var(--dim);width:90px;flex-shrink:0;}
+.dm-row select,.dm-row input{flex:1;min-width:80px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:6px;padding:6px 10px;color:var(--text);font-family:'Crimson Text',serif;font-size:0.9rem;outline:none;}
+/* Trade modal */
+#trade-modal .modal-box{max-width:500px;}
+.trade-section{background:rgba(255,255,255,0.04);border:1px solid rgba(255,215,0,0.15);border-radius:8px;padding:12px;margin-bottom:10px;}
+.trade-section h3{font-family:'Cinzel',serif;font-size:0.75rem;color:var(--gold);letter-spacing:2px;margin-bottom:8px;}
+.trade-prop-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.trade-prop-chip{padding:4px 10px;border-radius:12px;border:1px solid rgba(255,215,0,0.25);background:rgba(255,255,255,0.06);font-size:0.78rem;cursor:pointer;color:var(--text);}
+.trade-prop-chip.selected{border-color:var(--gold);background:rgba(255,215,0,0.18);color:var(--gold);}
+/* Rejoin */
+#rejoin-list{display:flex;flex-direction:column;gap:8px;margin:14px 0;}
 .modal-result{padding:16px;border-radius:8px;margin-bottom:16px;text-align:center;font-size:1.1rem;line-height:1.6;}
 .modal-result.success{background:rgba(40,160,40,0.2);border:1px solid rgba(40,160,40,0.4);color:#aaffaa;}
 .modal-result.failure{background:rgba(160,40,40,0.2);border:1px solid rgba(160,40,40,0.4);color:#ffaaaa;}
@@ -385,6 +403,8 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
           <button class="btn btn-gold" id="roll-btn" onclick="rollDice()">🎲 Roll the Dice</button>
           <button class="btn btn-outline btn-sm" id="jail-pay-btn" style="display:none" onclick="payJailFine()">⛓ Pay 50g to Escape Jail</button>
           <button class="btn btn-outline btn-sm" id="use-potion-btn" style="display:none" onclick="showUsePotionPanel()">🧪 Use Potion</button>
+          <button class="btn btn-outline btn-sm" id="trade-btn" style="display:none" onclick="openTrade()">🤝 Trade</button>
+          <button class="btn btn-outline btn-sm" id="dm-btn" style="display:none;border-color:#c8a8ff;color:#c8a8ff" onclick="openDmPanel()">👑 DM Panel</button>
         </div>
       </div>
       <div class="section-label">Chronicle</div>
@@ -464,6 +484,112 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;min
     <div id="pinfo-body"></div>
     <div style="text-align:center;margin-top:16px;">
       <button class="btn btn-outline btn-sm" onclick="closePlayerInfo()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DM ADMIN PANEL ===== -->
+<div class="modal-overlay hidden" id="dm-panel-modal" onclick="if(event.target===this)closeDmPanel()">
+  <div class="modal-box" style="max-width:520px;">
+    <div class="modal-title" style="font-size:1.1rem;">👑 DM Controls</div>
+    <div class="modal-subtitle" style="margin-bottom:16px;">All actions are logged to the chronicle.</div>
+
+    <div class="dm-section">
+      <h3>💰 GOLD</h3>
+      <div class="dm-row">
+        <label>Player</label>
+        <select id="dm-gold-player"></select>
+      </div>
+      <div class="dm-row">
+        <label>Amount</label>
+        <input type="number" id="dm-gold-amount" placeholder="e.g. 200" min="1">
+      </div>
+      <div class="dm-row">
+        <button class="btn btn-gold btn-sm" onclick="dmGold('give')">+ Give Gold</button>
+        <button class="btn btn-danger btn-sm" onclick="dmGold('take')">− Take Gold</button>
+      </div>
+    </div>
+
+    <div class="dm-section">
+      <h3>🏰 PROPERTY TRANSFER</h3>
+      <div class="dm-row">
+        <label>Property</label>
+        <select id="dm-prop-select"></select>
+      </div>
+      <div class="dm-row">
+        <label>Transfer to</label>
+        <select id="dm-prop-target"></select>
+      </div>
+      <div class="dm-row">
+        <button class="btn btn-gold btn-sm" onclick="dmTransferProp()">Transfer</button>
+        <button class="btn btn-outline btn-sm" onclick="dmUnownProp()">Remove Owner</button>
+      </div>
+    </div>
+
+    <div class="dm-section">
+      <h3>⚗ ITEMS</h3>
+      <div class="dm-row">
+        <label>Player</label>
+        <select id="dm-item-player"></select>
+      </div>
+      <div class="dm-row">
+        <label>Gear</label>
+        <select id="dm-gear-select">
+          <option value="">— None —</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="dmSetGear()">Set</button>
+      </div>
+      <div class="dm-row">
+        <label>Potion</label>
+        <select id="dm-potion-select"></select>
+        <button class="btn btn-outline btn-sm" onclick="dmGivePotion()">Give</button>
+        <button class="btn btn-danger btn-sm" onclick="dmClearPotions()">Clear All</button>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <button class="btn btn-outline" onclick="closeDmPanel()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TRADE MODAL ===== -->
+<div class="modal-overlay hidden" id="trade-modal" onclick="if(event.target===this)closeTrade()">
+  <div class="modal-box" style="max-width:500px;">
+    <div class="modal-title" style="font-size:1.1rem;">🤝 Propose Trade</div>
+    <div id="trade-body">
+      <div class="dm-row" style="margin-bottom:14px;">
+        <label>Trade with</label>
+        <select id="trade-target-player" onchange="renderTradeProps()"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="trade-section">
+          <h3>YOU OFFER</h3>
+          <div class="dm-row"><label>Gold</label><input type="number" id="trade-offer-gold" placeholder="0" min="0" value="0"></div>
+          <div id="trade-offer-props" class="trade-prop-list"></div>
+        </div>
+        <div class="trade-section">
+          <h3>YOU WANT</h3>
+          <div class="dm-row"><label>Gold</label><input type="number" id="trade-want-gold" placeholder="0" min="0" value="0"></div>
+          <div id="trade-want-props" class="trade-prop-list"></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;">
+        <button class="btn btn-gold" onclick="sendTradeOffer()">⚔ Send Offer</button>
+        <button class="btn btn-outline" onclick="closeTrade()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== INCOMING TRADE MODAL ===== -->
+<div class="modal-overlay hidden" id="trade-incoming-modal">
+  <div class="modal-box" style="max-width:460px;">
+    <div class="modal-title" style="font-size:1.1rem;">🤝 Trade Offer</div>
+    <div id="trade-incoming-body"></div>
+    <div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-gold" onclick="acceptTrade()">✓ Accept</button>
+      <button class="btn btn-outline" onclick="declineTrade()">✗ Decline</button>
     </div>
   </div>
 </div>
@@ -1489,11 +1615,31 @@ function showEvent(tile, player, onDone){
 function buildChoice(ch, tile, player, taxContext, onDone, container){
   const btn = document.createElement('button');
   btn.className='choice-btn';
-  let label = ch.text;
-  btn.innerHTML=`${label}`;
+  btn.innerHTML=`${ch.text}`;
   if(ch.cost) btn.innerHTML+=`<span class="choice-cost">Cost: ${ch.cost}g</span>`;
   if(ch.dc)   btn.innerHTML+=`<span class="choice-risk">Combat/Skill DC ${ch.dc} (roll d20)</span>`;
-  btn.onclick=()=>resolveChoice(ch, tile, player, taxContext, onDone);
+  btn.onclick=()=>{
+    // Instant-execute for non-consequential choices
+    if(ch.type==='close'){ resolveChoice(ch,tile,player,taxContext,onDone); return; }
+    // Highlight and show confirm/back
+    container.querySelectorAll('.choice-btn').forEach(b=>b.classList.remove('choice-selected'));
+    btn.classList.add('choice-selected');
+    document.getElementById('choice-confirm-bar')?.remove();
+    const bar=document.createElement('div');
+    bar.id='choice-confirm-bar';
+    bar.innerHTML=`<button class="btn btn-gold btn-sm" id="confirm-choice-btn">⚔ Commit</button>`
+      +`<button class="btn btn-outline btn-sm" id="back-choice-btn">← Reconsider</button>`;
+    container.appendChild(bar);
+    document.getElementById('confirm-choice-btn').onclick=()=>{
+      bar.remove();
+      container.querySelectorAll('.choice-btn').forEach(b=>b.classList.remove('choice-selected'));
+      resolveChoice(ch,tile,player,taxContext,onDone);
+    };
+    document.getElementById('back-choice-btn').onclick=()=>{
+      bar.remove();
+      container.querySelectorAll('.choice-btn').forEach(b=>b.classList.remove('choice-selected'));
+    };
+  };
   container.appendChild(btn);
 }
 
@@ -2651,6 +2797,297 @@ function syncLog(remoteLog){
 }
 
 // ═══════════════════════════════════════════════════════════
+// DM ADMIN PANEL
+// ═══════════════════════════════════════════════════════════
+function openDmPanel(){
+  if(!isHost) return;
+  // Populate player selects
+  const playerOpts=G.players.map((p,i)=>`<option value="${i}">${p.name}</option>`).join('');
+  ['dm-gold-player','dm-item-player'].forEach(id=>{
+    document.getElementById(id).innerHTML=playerOpts;
+  });
+  // Property select
+  const ownedProps=Object.entries(G.tileOwners).map(([id,ownerIdx])=>{
+    const t=TILES[parseInt(id)];
+    return `<option value="${id}">${t.name} (${G.players[ownerIdx].name})</option>`;
+  });
+  document.getElementById('dm-prop-select').innerHTML=
+    `<option value="">— Select —</option>`+ownedProps.join('');
+  document.getElementById('dm-prop-target').innerHTML=playerOpts;
+  // Gear select
+  document.getElementById('dm-gear-select').innerHTML=
+    `<option value="">— None —</option>`
+    +GEAR_ITEMS.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+  // Potion select
+  document.getElementById('dm-potion-select').innerHTML=
+    POTIONS.map((p,i)=>`<option value="${i}">${p.name}</option>`).join('');
+  document.getElementById('dm-panel-modal').classList.remove('hidden');
+}
+function closeDmPanel(){ document.getElementById('dm-panel-modal').classList.add('hidden'); }
+
+function dmGold(action){
+  const playerIdx=parseInt(document.getElementById('dm-gold-player').value);
+  const amount=parseInt(document.getElementById('dm-gold-amount').value);
+  if(isNaN(amount)||amount<=0){ alert('Enter a valid amount.'); return; }
+  const p=G.players[playerIdx];
+  if(action==='give'){
+    p.gold+=amount;
+    log(`[DM] ${p.name} receives ${amount}g.`,'highlight');
+  } else {
+    p.gold=Math.max(0,p.gold-amount);
+    log(`[DM] ${amount}g removed from ${p.name}.`,'danger');
+  }
+  renderPlayerCards(); syncState();
+}
+
+function dmTransferProp(){
+  const tileId=parseInt(document.getElementById('dm-prop-select').value);
+  const targetIdx=parseInt(document.getElementById('dm-prop-target').value);
+  if(isNaN(tileId)||!TILES[tileId]){ alert('Select a property.'); return; }
+  const tile=TILES[tileId];
+  const prevOwner=G.tileOwners[tileId]!=null?G.players[G.tileOwners[tileId]].name:'nobody';
+  G.tileOwners[tileId]=targetIdx;
+  updateTileDisplay(tileId,G.players[targetIdx]);
+  log(`[DM] ${tile.name} transferred from ${prevOwner} to ${G.players[targetIdx].name}.`,'highlight');
+  renderPlayerCards(); syncState(); openDmPanel();
+}
+
+function dmUnownProp(){
+  const tileId=parseInt(document.getElementById('dm-prop-select').value);
+  if(isNaN(tileId)||!TILES[tileId]){ alert('Select a property.'); return; }
+  const tile=TILES[tileId];
+  const prevOwner=G.tileOwners[tileId]!=null?G.players[G.tileOwners[tileId]].name:'nobody';
+  delete G.tileOwners[tileId];
+  delete G.buildings[tileId];
+  updateTileDisplay(tileId,null);
+  log(`[DM] ${tile.name} ownership removed from ${prevOwner}.`,'highlight');
+  renderPlayerCards(); syncState(); openDmPanel();
+}
+
+function dmSetGear(){
+  const playerIdx=parseInt(document.getElementById('dm-item-player').value);
+  const gearId=document.getElementById('dm-gear-select').value;
+  const p=G.players[playerIdx];
+  if(!gearId){ p.gear=null; log(`[DM] ${p.name}'s gear cleared.`,'highlight'); }
+  else {
+    const gear=GEAR_ITEMS.find(g=>g.id===gearId);
+    p.gear=gear;
+    log(`[DM] ${p.name} receives ${gear.name}.`,'highlight');
+  }
+  renderPlayerCards(); syncState();
+}
+
+function dmGivePotion(){
+  const playerIdx=parseInt(document.getElementById('dm-item-player').value);
+  const potIdx=parseInt(document.getElementById('dm-potion-select').value);
+  const p=G.players[playerIdx];
+  if(p.potions.length>=2){ alert(`${p.name} already has 2 potions.`); return; }
+  const pot=POTIONS[potIdx];
+  p.potions.push({...pot});
+  log(`[DM] ${p.name} receives ${pot.name}.`,'highlight');
+  renderPlayerCards(); syncState();
+}
+
+function dmClearPotions(){
+  const playerIdx=parseInt(document.getElementById('dm-item-player').value);
+  const p=G.players[playerIdx];
+  p.potions=[];
+  log(`[DM] ${p.name}'s potions cleared.`,'highlight');
+  renderPlayerCards(); syncState();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TRADES
+// ═══════════════════════════════════════════════════════════
+let _tradeOfferProps=new Set(); // tileIds the local player is offering
+let _tradeWantProps=new Set();  // tileIds they want
+
+function openTrade(){
+  if(G.phase!=='playing') return;
+  const me=myPlayerIdx===-1?0:myPlayerIdx;
+  const otherOpts=G.players.filter((_,i)=>i!==me&&!G.players[i].bankrupt)
+    .map(p=>`<option value="${p.idx}">${p.name}</option>`).join('');
+  if(!otherOpts){ alert('No other active players.'); return; }
+  document.getElementById('trade-target-player').innerHTML=otherOpts;
+  _tradeOfferProps=new Set();
+  _tradeWantProps=new Set();
+  document.getElementById('trade-offer-gold').value=0;
+  document.getElementById('trade-want-gold').value=0;
+  renderTradeProps();
+  document.getElementById('trade-modal').classList.remove('hidden');
+}
+function closeTrade(){ document.getElementById('trade-modal').classList.add('hidden'); }
+
+function renderTradeProps(){
+  const me=myPlayerIdx===-1?0:myPlayerIdx;
+  const targetIdx=parseInt(document.getElementById('trade-target-player').value);
+  // My properties
+  const myProps=Object.entries(G.tileOwners).filter(([,o])=>o===me).map(([id])=>parseInt(id));
+  // Their properties
+  const theirProps=Object.entries(G.tileOwners).filter(([,o])=>o===targetIdx).map(([id])=>parseInt(id));
+
+  const makeChip=(id,set,container)=>{
+    const t=TILES[id];
+    const sel=set.has(id);
+    return `<span class="trade-prop-chip ${sel?'selected':''}" onclick="toggleTradeProp(${id},'${container}')">${t.name}</span>`;
+  };
+  document.getElementById('trade-offer-props').innerHTML=
+    myProps.length?myProps.map(id=>makeChip(id,_tradeOfferProps,'offer')).join(''):'<span style="color:var(--dim);font-size:0.8rem">No properties</span>';
+  document.getElementById('trade-want-props').innerHTML=
+    theirProps.length?theirProps.map(id=>makeChip(id,_tradeWantProps,'want')).join(''):'<span style="color:var(--dim);font-size:0.8rem">No properties</span>';
+}
+
+function toggleTradeProp(id,side){
+  const set=side==='offer'?_tradeOfferProps:_tradeWantProps;
+  if(set.has(id)) set.delete(id); else set.add(id);
+  renderTradeProps();
+}
+
+async function sendTradeOffer(){
+  const me=myPlayerIdx===-1?0:myPlayerIdx;
+  const targetIdx=parseInt(document.getElementById('trade-target-player').value);
+  const offerGold=parseInt(document.getElementById('trade-offer-gold').value)||0;
+  const wantGold=parseInt(document.getElementById('trade-want-gold').value)||0;
+  if(offerGold>G.players[me].gold){ alert("You don't have that much gold."); return; }
+  G.pendingTrade={
+    from:me, to:targetIdx,
+    offerGold, wantGold,
+    offerProps:[..._tradeOfferProps],
+    wantProps:[..._tradeWantProps]
+  };
+  closeTrade();
+  log(`${G.players[me].name} proposes a trade to ${G.players[targetIdx].name}.`,'highlight');
+  await syncState();
+}
+
+function showIncomingTrade(trade){
+  const from=G.players[trade.from];
+  const to=G.players[trade.to];
+  const offerPropsStr=trade.offerProps.map(id=>TILES[id].name).join(', ')||'nothing';
+  const wantPropsStr=trade.wantProps.map(id=>TILES[id].name).join(', ')||'nothing';
+  document.getElementById('trade-incoming-body').innerHTML=`
+    <p style="margin-bottom:12px;line-height:1.6;">
+      <strong style="color:${from.color}">${from.name}</strong> offers you:
+      <strong style="color:var(--gold)">${trade.offerGold}g</strong>${trade.offerProps.length?` + ${offerPropsStr}`:''}
+    </p>
+    <p style="line-height:1.6;">In exchange for:
+      <strong style="color:var(--gold)">${trade.wantGold}g</strong>${trade.wantProps.length?` + ${wantPropsStr}`:''}
+    </p>`;
+  document.getElementById('trade-incoming-modal').classList.remove('hidden');
+}
+
+async function acceptTrade(){
+  document.getElementById('trade-incoming-modal').classList.add('hidden');
+  const t=G.pendingTrade;
+  if(!t) return;
+  const from=G.players[t.from], to=G.players[t.to];
+  // Gold swap
+  from.gold=Math.max(0,from.gold-t.offerGold)+t.wantGold;
+  to.gold=Math.max(0,to.gold-t.wantGold)+t.offerGold;
+  // Property swap
+  t.offerProps.forEach(id=>{ G.tileOwners[id]=t.to; updateTileDisplay(id,to); });
+  t.wantProps.forEach(id=>{ G.tileOwners[id]=t.from; updateTileDisplay(id,from); });
+  G.pendingTrade=null;
+  log(`🤝 Trade complete: ${from.name} ↔ ${to.name}.`,'success');
+  renderPlayerCards(); await syncState();
+}
+
+async function declineTrade(){
+  document.getElementById('trade-incoming-modal').classList.add('hidden');
+  const t=G.pendingTrade;
+  if(t){
+    log(`${G.players[t.to].name} declined the trade.`,'danger');
+    G.pendingTrade=null;
+    await syncState();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// REJOIN SUPPORT
+// ═══════════════════════════════════════════════════════════
+async function checkRejoin(roomData){
+  // Called when joinRoom finds an active game
+  const rs=roomData.state;
+  if(rs.phase!=='playing'||!rs.game?.players) return false;
+  // Show rejoin picker
+  const name=document.getElementById('lobby-name').value.trim()||'Adventurer';
+  document.getElementById('lobby-online-options').style.display='none';
+  document.getElementById('lobby-waiting').style.display='';
+  document.getElementById('room-code-display').textContent=roomCode;
+  document.getElementById('lobby-player-list').innerHTML=`
+    <div style="text-align:center;color:var(--dim);font-size:0.9rem;margin:10px 0">
+      Game in progress. Waiting for host to assign you a slot...
+    </div>`;
+  document.getElementById('start-game-btn').style.display='none';
+  document.getElementById('waiting-msg').textContent='';
+  // Write rejoin request into room
+  const {data}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+  const state=data.state;
+  if(!state.rejoinRequests) state.rejoinRequests=[];
+  state.rejoinRequests.push({sessionId:mySessionId,name});
+  await sb.from('game_rooms').update({state}).eq('id',roomCode);
+  startRejoinPoll();
+  return true;
+}
+
+let _rejoinPollTimer=null;
+function startRejoinPoll(){
+  if(_rejoinPollTimer) clearInterval(_rejoinPollTimer);
+  _rejoinPollTimer=setInterval(async()=>{
+    const {data}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+    if(!data) return;
+    const rs=data.state;
+    // Check if host assigned us
+    if(rs.phase==='playing'&&rs.game){
+      const assignedIdx=rs.game.players.findIndex(p=>p.sessionId===mySessionId);
+      if(assignedIdx!==-1){
+        clearInterval(_rejoinPollTimer);
+        myPlayerIdx=assignedIdx;
+        launchGameFromState(rs);
+      }
+    }
+  },2000);
+}
+
+function showRejoinRequests(requests){
+  // Host sees a list of reconnecting players and can assign them slots
+  if(!isHost||!requests||!requests.length) return;
+  const existing=document.getElementById('rejoin-host-widget');
+  if(existing) existing.remove();
+  const widget=document.createElement('div');
+  widget.id='rejoin-host-widget';
+  widget.style.cssText='position:fixed;bottom:16px;right:16px;background:#0e1f0e;border:1px solid rgba(255,215,0,0.4);border-radius:10px;padding:14px 16px;z-index:200;min-width:240px;';
+  widget.innerHTML=`<div style="font-family:'Cinzel',serif;font-size:0.75rem;color:var(--gold);margin-bottom:10px;letter-spacing:1px;">👤 PLAYERS REJOINING</div>`
+    +`<div id="rejoin-list">`
+    +requests.map(req=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="flex:1;font-size:0.85rem">${req.name}</span>
+        <select id="rejoin-slot-${req.sessionId}" style="background:rgba(0,0,0,0.5);border:1px solid rgba(255,215,0,0.3);color:var(--text);border-radius:4px;padding:3px 6px;font-size:0.8rem;">
+          ${G.players.map((p,i)=>`<option value="${i}">${p.name}</option>`).join('')}
+        </select>
+        <button class="btn btn-gold btn-sm" onclick="assignRejoin('${req.sessionId}')">✓</button>
+      </div>`).join('')
+    +`</div>`;
+  document.body.appendChild(widget);
+}
+
+async function assignRejoin(sessionId){
+  const slotIdx=parseInt(document.getElementById(`rejoin-slot-${sessionId}`).value);
+  const {data}=await sb.from('game_rooms').select('state').eq('id',roomCode).single();
+  const state=data.state;
+  // Assign sessionId to that player slot
+  state.game.players[slotIdx].sessionId=sessionId;
+  // Remove from rejoin requests
+  state.rejoinRequests=(state.rejoinRequests||[]).filter(r=>r.sessionId!==sessionId);
+  await sb.from('game_rooms').update({state}).eq('id',roomCode);
+  Object.assign(G,state.game);
+  log(`[DM] ${G.players[slotIdx].name} has rejoined.`,'highlight');
+  syncState();
+  document.getElementById('rejoin-host-widget')?.remove();
+  showRejoinRequests(state.rejoinRequests);
+}
+
+// ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
 window.onload=()=>{
@@ -2717,12 +3154,18 @@ async function joinRoom(){
   if(error||!data){alert('Room not found! Double-check the code.');return;}
 
   const rs=data.state;
-  if(rs.phase!=='lobby'){alert('That game has already started!');return;}
-  if(rs.lobbyPlayers.length>=6){alert('Room is full (max 6 players)!');return;}
-
-  myPlayerIdx=rs.lobbyPlayers.length;
   roomCode=code;
   isHost=false;
+
+  // Handle active game — rejoin flow
+  if(rs.phase==='playing'){
+    const rejoined=await checkRejoin(data);
+    if(rejoined) return;
+    alert('That game has already started!'); roomCode=null; return;
+  }
+  if(rs.lobbyPlayers.length>=6){alert('Room is full (max 6 players)!');roomCode=null;return;}
+
+  myPlayerIdx=rs.lobbyPlayers.length;
 
   const updatedPlayers=[...rs.lobbyPlayers,{name,sessionId:mySessionId,idx:myPlayerIdx}];
   await sb.from('game_rooms').update({state:{...rs,lobbyPlayers:updatedPlayers}}).eq('id',code);
@@ -2831,6 +3274,21 @@ function startGamePoll(){
          JSON.stringify(remoteG.tileOwners)!==JSON.stringify(G.tileOwners)){
         applyRemoteState(remoteG);
       }
+      // Pending trade directed at me
+      const pt=remoteG.pendingTrade;
+      const myIdx=myPlayerIdx===-1?G.currentIdx:myPlayerIdx;
+      if(pt&&pt.to===myIdx&&!G.pendingTrade){
+        Object.assign(G,{pendingTrade:pt});
+        showIncomingTrade(pt);
+      } else if(!pt&&G.pendingTrade){
+        G.pendingTrade=null;
+        document.getElementById('trade-incoming-modal').classList.add('hidden');
+      }
+      // Host: check for rejoin requests
+      if(isHost){
+        const reqs=data.state.rejoinRequests||[];
+        if(reqs.length) showRejoinRequests(reqs);
+      }
     }catch(e){ console.warn('game poll error:',e); }
   },1000);
 }
@@ -2847,6 +3305,9 @@ function launchGameFromState(rs){
   renderTokens();
   startTurn();
   startGamePoll();
+  // Show DM button for host, trade button for everyone in online play
+  if(isHost) document.getElementById('dm-btn').style.display='';
+  if(roomCode) document.getElementById('trade-btn').style.display='';
   log('⚔ The online quest begins! May fortune favor the bold.','highlight');
 }
 
